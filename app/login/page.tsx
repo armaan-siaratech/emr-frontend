@@ -34,7 +34,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loginByPin, verify2FALogin, isAuthenticated, isSuperAdmin, isLoading: isAuthLoading } = useAuth();
+  const { login, loginByPin, verify2FALogin, logout, isAuthenticated, isSuperAdmin, isLoading: isAuthLoading } = useAuth();
 
   // Active role & Auth parameters
   const [selectedRole, setSelectedRole] = useState<"doctor" | "admin" | "superadmin" | "patient">("superadmin");
@@ -59,8 +59,62 @@ export default function LoginPage() {
       if (savedPin && savedPin.length >= 4 && savedPin.length <= 6) {
         setConfiguredPinLength(savedPin.length);
       }
-    } catch (_) {}
+    } catch (_) { }
   }, []);
+
+  // Strict Role Section Validator: Enforces that accounts log in strictly through their assigned role section
+  const validateUserRoleForSection = (loggedUser: any, section: "doctor" | "admin" | "superadmin" | "patient"): boolean => {
+    const roles: string[] = loggedUser?.roles || [];
+    const isSuper = roles.some((r) => ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r));
+    const hasAdminRole = roles.some((r) => ["ADMIN", "admin", "TENANT_ADMIN", "tenant_admin", "TenantAdmin", "facility_admin", "FacilityAdmin"].includes(r));
+    const isTenantUser = !!loggedUser?.tenant_id;
+    // Recognize explicit admin roles OR any tenant-linked user (not SuperAdmin) as a Tenant / Facility Administrator
+    const isAdmin = hasAdminRole || (isTenantUser && !isSuper);
+    const isDoctor = roles.some((r) => ["DOCTOR", "doctor", "NURSE", "nurse", "CLINICIAN", "clinician", "Doctor", "Nurse"].includes(r));
+    const isPatient = roles.some((r) => ["PATIENT", "patient", "Patient"].includes(r));
+
+    if (section === "superadmin") {
+      if (!isSuper) {
+        throw new Error("Access Denied: Your account does not have Super Admin privileges. Please select your correct Account Role section.");
+      }
+      return true;
+    }
+
+    if (section === "admin") {
+      if (isSuper) {
+        throw new Error("Access Denied: Super Admin accounts must log in through the Super Admin section.");
+      }
+      if (!isAdmin) {
+        throw new Error("Access Denied: Your account is not a Facility / Tenant Administrator. Please select your correct Account Role section.");
+      }
+      return true;
+    }
+
+    if (section === "doctor") {
+      if (isSuper) {
+        throw new Error("Access Denied: Super Admin accounts must log in through the Super Admin section.");
+      }
+      if (isAdmin) {
+        throw new Error("Access Denied: Facility / Tenant Admin accounts must log in through the Facility / Tenant Admin section.");
+      }
+      if (!isDoctor) {
+        throw new Error("Access Denied: Your account is not authorized for the Clinician section. Please select your correct Account Role section.");
+      }
+      return true;
+    }
+
+    if (section === "patient") {
+      if (isSuper || isAdmin || isDoctor) {
+        throw new Error("Access Denied: Clinical & Admin accounts must log in through their respective role section.");
+      }
+      if (!isPatient) {
+        throw new Error("Access Denied: Your account is not a Patient account. Please select your correct Account Role section.");
+      }
+      return true;
+    }
+
+    return true;
+  };
 
   const handlePinInputChange = (val: string) => {
     const clean = val.replace(/\D/g, "").slice(0, configuredPinLength);
@@ -103,10 +157,16 @@ export default function LoginPage() {
         return;
       }
       const loggedUser = res.user;
-      const isSuper = loggedUser?.roles?.some((r) =>
-        ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r)
-      );
-      if (isSuper || selectedRole === "superadmin") {
+
+      // Validate logged-in user role against current section
+      try {
+        validateUserRoleForSection(loggedUser, selectedRole);
+      } catch (valErr: any) {
+        await logout();
+        throw valErr;
+      }
+
+      if (selectedRole === "superadmin") {
         router.push("/super-admin");
       } else {
         router.push("/dashboard");
@@ -118,9 +178,6 @@ export default function LoginPage() {
       setPeekCharIndex(null);
     }
   };
-
-
-
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -141,60 +198,56 @@ export default function LoginPage() {
 
   // Interactive Showcase Left Panel Tab
   const [activeShowcaseTab, setActiveShowcaseTab] = useState<"vitals" | "ai" | "security">("vitals");
-  
+
   // Ambient Theme switcher (mint | cyan | dark)
   const [themeMode, setThemeMode] = useState<"mint" | "cyan" | "dark">("mint");
-  
+
   // Biometric scanner state
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success">("idle");
-  
+
   // Forgot password modal
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
 
-  // Role selection handler (keeps inputs clean for manual entry with placeholders)
+  // Role selection handler
   const handleRoleSelect = (role: "doctor" | "admin" | "superadmin" | "patient") => {
     setSelectedRole(role);
     setPinInput("");
+    setFormError(null);
   };
-
 
   // Quick Preset Persona loader
   const loadPresetPersona = (persona: "dr_sarah" | "james_admin" | "elena_super") => {
+    setFormError(null);
     if (persona === "dr_sarah") {
       handleRoleSelect("doctor");
+      setEmail("dr.sarah@medicarehms.com");
+      setPassword("Clinical#2026Doc");
     } else if (persona === "james_admin") {
       handleRoleSelect("admin");
+      setEmail("admin.facility@medicarehms.com");
+      setPassword("FacilityAdmin#99");
     } else {
       handleRoleSelect("superadmin");
+      setEmail("superadmin@medicarehms.com");
+      setPassword("SuperAdmin#Secure1");
     }
   };
 
   // Centralized authentication executor
   const performAuthentication = async (inputEmail?: string, inputPassword?: string) => {
     setFormError(null);
-    setIsLoading(true);
 
     let targetEmail = inputEmail || email;
     let targetPassword = inputPassword || password;
 
-    // Fallback to active role credentials if inputs are empty
     if (!targetEmail || !targetPassword) {
-      if (selectedRole === "superadmin") {
-        targetEmail = targetEmail || "superadmin@medicarehms.com";
-        targetPassword = targetPassword || "SuperAdmin#Secure1";
-      } else if (selectedRole === "admin") {
-        targetEmail = targetEmail || "admin.facility@medicarehms.com";
-        targetPassword = targetPassword || "FacilityAdmin#99";
-      } else if (selectedRole === "doctor") {
-        targetEmail = targetEmail || "dr.sarah@medicarehms.com";
-        targetPassword = targetPassword || "Clinical#2026Doc";
-      } else {
-        targetEmail = targetEmail || "patient.care@medicarehms.com";
-        targetPassword = targetPassword || "PatientCare#2026";
-      }
+      setFormError("Please enter your authorized Email and Password.");
+      return;
     }
+
+    setIsLoading(true);
 
     try {
       const res = await login({ email: targetEmail, password: targetPassword });
@@ -205,11 +258,16 @@ export default function LoginPage() {
         return;
       }
       const loggedUser = res.user;
-      const isSuper = loggedUser?.roles?.some((r) =>
-        ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r)
-      );
 
-      if (isSuper || selectedRole === "superadmin") {
+      // Validate logged-in user role against current section
+      try {
+        validateUserRoleForSection(loggedUser, selectedRole);
+      } catch (valErr: any) {
+        await logout();
+        throw valErr;
+      }
+
+      if (selectedRole === "superadmin") {
         router.push("/super-admin");
       } else {
         router.push("/dashboard");
@@ -230,10 +288,16 @@ export default function LoginPage() {
     setFormError(null);
     try {
       const loggedUser = await verify2FALogin(mfaCodeInput, mfaToken || undefined);
-      const isSuper = loggedUser?.roles?.some((r) =>
-        ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r)
-      );
-      if (isSuper || selectedRole === "superadmin") {
+
+      // Validate logged-in user role against current section
+      try {
+        validateUserRoleForSection(loggedUser, selectedRole);
+      } catch (valErr: any) {
+        await logout();
+        throw valErr;
+      }
+
+      if (selectedRole === "superadmin") {
         router.push("/super-admin");
       } else {
         router.push("/dashboard");
@@ -243,6 +307,7 @@ export default function LoginPage() {
       setFormError(err?.message || "Invalid 6-digit Authenticator code or Backup Recovery code.");
     }
   };
+
 
 
 
@@ -282,7 +347,7 @@ export default function LoginPage() {
 
   return (
     <div className={`min-h-screen w-full transition-colors duration-500 flex items-center justify-center p-3 sm:p-6 lg:p-8 relative overflow-hidden font-sans ${getThemeBackground()}`}>
-      
+
       {/* Dynamic Animated Ambient Background Orbs */}
       <div className="pointer-events-none absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-[#14b8a6]/20 blur-[120px] animate-pulse-soft" />
       <div className="pointer-events-none absolute -right-40 -bottom-40 h-[600px] w-[600px] rounded-full bg-[#0284c7]/20 blur-[120px] animate-pulse-soft stagger-3" />
@@ -299,11 +364,10 @@ export default function LoginPage() {
             type="button"
             onClick={() => setThemeMode("mint")}
             title="Mint Clinical Theme"
-            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${
-              themeMode === "mint"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${themeMode === "mint"
                 ? "bg-[#0f766e] text-white shadow-xs"
                 : "text-[#2e4d46] hover:bg-white/50"
-            }`}
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-[#14b8a6]" />
             Mint
@@ -312,11 +376,10 @@ export default function LoginPage() {
             type="button"
             onClick={() => setThemeMode("cyan")}
             title="Cyan Oceanic Theme"
-            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${
-              themeMode === "cyan"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${themeMode === "cyan"
                 ? "bg-[#0284c7] text-white shadow-xs"
                 : "text-[#2e4d46] hover:bg-white/50"
-            }`}
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-[#38bdf8]" />
             Cyan
@@ -325,11 +388,10 @@ export default function LoginPage() {
             type="button"
             onClick={() => setThemeMode("dark")}
             title="Dark Clinical Theme"
-            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${
-              themeMode === "dark"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${themeMode === "dark"
                 ? "bg-slate-800 text-teal-400 shadow-xs border border-teal-500/30"
                 : "text-[#2e4d46] hover:bg-white/50"
-            }`}
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-slate-900 border border-teal-400" />
             Dark
@@ -349,20 +411,19 @@ export default function LoginPage() {
 
       {/* MAIN UNIFIED GLASS CARD CONTAINER */}
       <div className={`w-full max-w-6xl rounded-3xl border-2 backdrop-blur-3xl overflow-hidden relative z-10 transition-all duration-300 ${getCardContainerStyle()}`}>
-        
+
         {/* Top Decorative Hospital Heartbeat Line Header */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#0284c7] via-[#14b8a6] to-[#0f766e] relative overflow-hidden">
           <div className="absolute inset-0 bg-white/40 animate-shimmer" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
-          
+
           {/* ==================== LEFT 5 COLS: INTERACTIVE CLINICAL SHOWCASE ==================== */}
-          <div className={`lg:col-span-5 border-b lg:border-b-0 lg:border-r p-6 sm:p-8 flex flex-col justify-between space-y-6 ${
-            themeMode === "dark" ? "border-slate-700/80 bg-slate-950/50" : "border-white/70 bg-white/35"
-          }`}>
+          <div className={`lg:col-span-5 border-b lg:border-b-0 lg:border-r p-6 sm:p-8 flex flex-col justify-between space-y-6 ${themeMode === "dark" ? "border-slate-700/80 bg-slate-950/50" : "border-white/70 bg-white/35"
+            }`}>
             <div className="space-y-6">
-              
+
               {/* Brand Logo & HIPAA Status */}
               <div className="flex items-center justify-between border-b pb-4 border-white/40">
                 <div className="flex items-center gap-3">
@@ -425,11 +486,10 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setActiveShowcaseTab("vitals")}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                      activeShowcaseTab === "vitals"
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${activeShowcaseTab === "vitals"
                         ? "bg-[#0f766e] text-white shadow-xs"
                         : "opacity-70 hover:opacity-100"
-                    }`}
+                      }`}
                   >
                     <HeartPulse className="h-3.5 w-3.5" />
                     Vitals
@@ -438,11 +498,10 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setActiveShowcaseTab("ai")}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                      activeShowcaseTab === "ai"
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${activeShowcaseTab === "ai"
                         ? "bg-[#0f766e] text-white shadow-xs"
                         : "opacity-70 hover:opacity-100"
-                    }`}
+                      }`}
                   >
                     <Cpu className="h-3.5 w-3.5" />
                     AI Copilot
@@ -451,11 +510,10 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setActiveShowcaseTab("security")}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                      activeShowcaseTab === "security"
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${activeShowcaseTab === "security"
                         ? "bg-[#0f766e] text-white shadow-xs"
                         : "opacity-70 hover:opacity-100"
-                    }`}
+                      }`}
                   >
                     <ShieldCheck className="h-3.5 w-3.5" />
                     Security
@@ -464,7 +522,7 @@ export default function LoginPage() {
 
                 {/* Showcase Dynamic Content Panel */}
                 <div className="rounded-2xl border border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/90 p-4 shadow-sm min-h-[160px] flex flex-col justify-between transition-all">
-                  
+
                   {/* TAB 1: VITALS TELEMETRY MONITOR */}
                   {activeShowcaseTab === "vitals" && (
                     <div className="space-y-3 animate-fade-in">
@@ -626,12 +684,11 @@ export default function LoginPage() {
 
 
           {/* ==================== RIGHT 7 COLS: NEXT-GEN AUTHENTICATION CENTER ==================== */}
-          <div className={`lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between ${
-            themeMode === "dark" ? "bg-slate-900/90" : "bg-white/60"
-          }`}>
-            
+          <div className={`lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between ${themeMode === "dark" ? "bg-slate-900/90" : "bg-white/60"
+            }`}>
+
             <div className="space-y-6">
-              
+
               {/* Header & Auth Method Selector */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 border-white/60 dark:border-slate-800 gap-3">
                 <div>
@@ -654,11 +711,10 @@ export default function LoginPage() {
                       setAuthMethod("password");
                       setIs2FACardActive(false);
                     }}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${
-                      authMethod === "password" && !is2FACardActive
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${authMethod === "password" && !is2FACardActive
                         ? "bg-[#0f766e] text-white shadow-xs"
                         : "opacity-70 hover:opacity-100"
-                    }`}
+                      }`}
                   >
                     <Lock className="h-3.5 w-3.5" />
                     <span>Password</span>
@@ -670,11 +726,10 @@ export default function LoginPage() {
                       setAuthMethod("pin");
                       setIs2FACardActive(false);
                     }}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${
-                      authMethod === "pin" && !is2FACardActive
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${authMethod === "pin" && !is2FACardActive
                         ? "bg-[#0f766e] text-white shadow-xs"
                         : "opacity-70 hover:opacity-100"
-                    }`}
+                      }`}
                   >
                     <KeyRound className="h-3.5 w-3.5" />
                     <span>PIN</span>
@@ -686,11 +741,10 @@ export default function LoginPage() {
                       setAuthMethod("2fa");
                       setIs2FACardActive(true);
                     }}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${
-                      authMethod === "2fa" || is2FACardActive
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${authMethod === "2fa" || is2FACardActive
                         ? "bg-[#0f766e] text-white shadow-xs"
                         : "opacity-70 hover:opacity-100"
-                    }`}
+                      }`}
                   >
                     <ShieldCheck className="h-3.5 w-3.5" />
                     <span>2FA Code</span>
@@ -702,11 +756,10 @@ export default function LoginPage() {
                       setAuthMethod("biometric");
                       setIs2FACardActive(false);
                     }}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${
-                      authMethod === "biometric" && !is2FACardActive
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${authMethod === "biometric" && !is2FACardActive
                         ? "bg-[#0f766e] text-white shadow-xs"
                         : "opacity-70 hover:opacity-100"
-                    }`}
+                      }`}
                   >
                     <Fingerprint className="h-3.5 w-3.5" />
                     <span>Biometric</span>
@@ -714,569 +767,560 @@ export default function LoginPage() {
                 </div>
               </div>
 
-            {is2FACardActive || authMethod === "2fa" ? (
-              /* ==================== 2FA VERIFICATION CHALLENGE VIEW ==================== */
-              <div className="space-y-5 animate-fade-in my-auto">
-                <div className="rounded-2xl border border-teal-500/30 bg-teal-950/20 p-4 space-y-1">
-                  <div className="flex items-center gap-2 text-[#0f766e] dark:text-teal-400">
-                    <ShieldCheck className="h-5 w-5 text-[#0d9488]" />
-                    <span className="text-xs font-black uppercase tracking-wider">
-                      Google Authenticator / Backup Code Required
-                    </span>
-                  </div>
-                  <p className="text-xs font-semibold opacity-80 pt-0.5">
-                    Your account is protected by 2FA. Enter your 6-digit TOTP code from Google Authenticator or your 8-character backup recovery code below.
-                  </p>
-                </div>
-
-                {/* 2FA Method Selector (Authenticator App vs Recovery Code) */}
-                <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/5 dark:bg-slate-800 border border-white/80 dark:border-slate-700">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsUsingRecoveryCode(false);
-                      setMfaCodeInput("");
-                      setFormError(null);
-                    }}
-                    className={`py-2 px-3 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      !isUsingRecoveryCode
-                        ? "bg-[#0f766e] text-white shadow-xs"
-                        : "opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <Smartphone className="h-4 w-4" />
-                    <span>Google Authenticator</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsUsingRecoveryCode(true);
-                      setMfaCodeInput("");
-                      setFormError(null);
-                    }}
-                    className={`py-2 px-3 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      isUsingRecoveryCode
-                        ? "bg-[#0f766e] text-white shadow-xs"
-                        : "opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <KeyRound className="h-4 w-4" />
-                    <span>Recovery Code</span>
-                  </button>
-                </div>
-
-                {formError && (
-                  <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300 animate-fade-in">
-                    <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-bold text-rose-800 dark:text-rose-200">Verification Failed</p>
-                      <p className="text-[11px] font-medium opacity-90 mt-0.5">{formError}</p>
-                    </div>
-                  </div>
-                )}
-
-                <form onSubmit={handleVerify2FASubmit} className="space-y-4">
-                  {!isUsingRecoveryCode ? (
-                    <div>
-                      <label className="block text-xs font-extrabold mb-1.5">
-                        Enter 6-Digit Authenticator Code
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        autoFocus
-                        value={mfaCodeInput}
-                        onChange={(e) => setMfaCodeInput(e.target.value.replace(/\D/g, ""))}
-                        placeholder="e.g. 123456"
-                        className="h-12 w-full text-center tracking-[0.5em] font-mono text-xl font-black rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 text-[#172522] dark:text-white outline-none focus:border-[#0f766e] shadow-xs"
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs font-extrabold mb-1.5">
-                        Enter 8-Character Backup Recovery Code
-                      </label>
-                      <input
-                        type="text"
-                        autoFocus
-                        value={mfaCodeInput}
-                        onChange={(e) => setMfaCodeInput(e.target.value.toUpperCase())}
-                        placeholder="e.g. A7B9-K2P4"
-                        className="h-12 w-full text-center tracking-widest font-mono text-base font-black uppercase rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 text-[#172522] dark:text-white outline-none focus:border-[#0f766e] shadow-xs"
-                      />
-                      <p className="text-[10px] opacity-75 mt-1 text-center">
-                        Each recovery code can only be used once.
-                      </p>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={isLoading || !mfaCodeInput}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#115e59] hover:to-[#0f766e] text-white text-xs font-black shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                        Verifying 2FA Code...
+              {is2FACardActive || authMethod === "2fa" ? (
+                /* ==================== 2FA VERIFICATION CHALLENGE VIEW ==================== */
+                <div className="space-y-5 animate-fade-in my-auto">
+                  <div className="rounded-2xl border border-teal-500/30 bg-teal-950/20 p-4 space-y-1">
+                    <div className="flex items-center gap-2 text-[#0f766e] dark:text-teal-400">
+                      <ShieldCheck className="h-5 w-5 text-[#0d9488]" />
+                      <span className="text-xs font-black uppercase tracking-wider">
+                        Google Authenticator / Backup Code Required
                       </span>
-                    ) : (
-                      <>
-                        <ShieldCheck className="h-4 w-4 text-white" />
-                        <span>Verify & Sign In</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
+                    </div>
+                    <p className="text-xs font-semibold opacity-80 pt-0.5">
+                      Your account is protected by 2FA. Enter your 6-digit TOTP code from Google Authenticator or your 8-character backup recovery code below.
+                    </p>
+                  </div>
 
-                  <div className="pt-2 text-center">
+                  {/* 2FA Method Selector (Authenticator App vs Recovery Code) */}
+                  <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/5 dark:bg-slate-800 border border-white/80 dark:border-slate-700">
                     <button
                       type="button"
                       onClick={() => {
-                        setIs2FACardActive(false);
-                        setAuthMethod("password");
+                        setIsUsingRecoveryCode(false);
                         setMfaCodeInput("");
                         setFormError(null);
                       }}
-                      className="text-xs font-bold text-[#0f766e] dark:text-teal-400 hover:underline cursor-pointer"
+                      className={`py-2 px-3 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${!isUsingRecoveryCode
+                          ? "bg-[#0f766e] text-white shadow-xs"
+                          : "opacity-70 hover:opacity-100"
+                        }`}
                     >
-                      ← Back to Standard Password Login
+                      <Smartphone className="h-4 w-4" />
+                      <span>Google Authenticator</span>
                     </button>
-                  </div>
-                </form>
-              </div>
-            ) : (
-              <div className="space-y-6">
-              
-              {/* EMERGENCY ER BREAK-GLASS WARNING STATE BANNER */}
-              {breakGlassMode && (
-                <div className="rounded-2xl border-2 border-red-500/60 bg-red-500/10 p-3.5 flex items-start gap-3 animate-pulse-soft">
-                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-black text-red-900 dark:text-red-200">
-                      EMERGENCY ACCESS (BREAK-GLASS MODE ACTIVE)
-                    </p>
-                    <p className="text-[10px] font-semibold text-red-700 dark:text-red-300 leading-relaxed mt-0.5">
-                      Bypassing standard multi-factor verification for urgent care triage. All actions taken in this session are escalated directly to Hospital Compliance Officers.
-                    </p>
-                  </div>
-                </div>
-              )}
 
-              {/* Role Selection Grid */}
-              <div>
-                <label className="block text-[11px] font-extrabold uppercase opacity-70 mb-2">
-                  Select Account Role
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  
-                  {/* Doctor Role */}
-                  <button
-                    type="button"
-                    onClick={() => handleRoleSelect("doctor")}
-                    className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      selectedRole === "doctor"
-                        ? "border-[#0f766e] bg-[#0f766e] text-white shadow-md scale-[1.02]"
-                        : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
-                    }`}
-                  >
-                    <UserCheck className="h-4 w-4" />
-                    <span>Clinician</span>
-                    <span className="text-[9px] font-normal opacity-80">Doctor / Nurse</span>
-                  </button>
-
-                  {/* Admin Role */}
-                  <button
-                    type="button"
-                    onClick={() => handleRoleSelect("admin")}
-                    className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      selectedRole === "admin"
-                        ? "border-[#0f766e] bg-[#0f766e] text-white shadow-md scale-[1.02]"
-                        : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
-                    }`}
-                  >
-                    <Building2 className="h-4 w-4" />
-                    <span>Facility Admin</span>
-                    <span className="text-[9px] font-normal opacity-80">Hospital Admin</span>
-                  </button>
-
-                  {/* Super Admin Role */}
-                  <button
-                    type="button"
-                    onClick={() => handleRoleSelect("superadmin")}
-                    className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      selectedRole === "superadmin"
-                        ? "border-[#a34e36] bg-[#a34e36] text-white shadow-md scale-[1.02]"
-                        : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
-                    }`}
-                  >
-                    <ShieldCheck className="h-4 w-4" />
-                    <span>Super Admin</span>
-                    <span className="text-[9px] font-normal opacity-80">System Owner</span>
-                  </button>
-
-                  {/* Patient Portal */}
-                  <button
-                    type="button"
-                    onClick={() => handleRoleSelect("patient")}
-                    className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      selectedRole === "patient"
-                        ? "border-[#0284c7] bg-[#0284c7] text-white shadow-md scale-[1.02]"
-                        : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
-                    }`}
-                  >
-                    <Stethoscope className="h-4 w-4" />
-                    <span>Patient Care</span>
-                    <span className="text-[9px] font-normal opacity-80">Self Portal</span>
-                  </button>
-                </div>
-              </div>
-
-
-              {/* ==================== MODE 1: STANDARD PASSWORD FORM ==================== */}
-              {authMethod === "password" && (
-                <form onSubmit={handleSubmit} className="space-y-4 animate-fade-in">
-                  
-                  {/* Authentication Error Banner */}
-                  {formError && (
-                    <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300 animate-fade-in">
-                      <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="font-bold text-rose-800 dark:text-rose-200">Authentication Failed</p>
-                        <p className="text-[11px] font-medium opacity-90 mt-0.5">{formError}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormError(null)}
-                        className="text-rose-500 hover:text-rose-700 p-0.5"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  
-                  {/* Email Field */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold">
-                        Authorized Work Email
-                      </label>
-                      <span className="text-[10px] font-bold text-[#0f766e] dark:text-teal-400">
-                        {selectedRole === "doctor" && "Doctor Identity Verified"}
-                        {selectedRole === "admin" && "Facility Administrator"}
-                        {selectedRole === "superadmin" && "Root Super Admin"}
-                        {selectedRole === "patient" && "Patient Access Pass"}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder={
-                          selectedRole === "superadmin"
-                            ? "superadmin@medicarehms.com"
-                            : selectedRole === "admin"
-                            ? "admin.facility@medicarehms.com"
-                            : selectedRole === "doctor"
-                            ? "dr.sarah@medicarehms.com"
-                            : "patient.care@medicarehms.com"
-                        }
-                        className="h-11 w-full rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 pl-10 pr-4 text-xs font-bold outline-none transition-all placeholder:opacity-50 focus:border-[#0f766e] focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#0f766e]/20 shadow-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Password Field */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold">
-                        Account Password
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowForgotModal(true)}
-                        className="text-[11px] font-bold text-[#a34e36] hover:underline cursor-pointer"
-                      >
-                        Forgot Password?
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter password..."
-                        className="h-11 w-full rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 pl-10 pr-12 text-xs font-bold outline-none transition-all placeholder:opacity-50 focus:border-[#0f766e] focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#0f766e]/20 shadow-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setShowPassword((prev) => !prev);
-                        }}
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer z-20 touch-manipulation active:scale-95"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-
-                  {/* Checkboxes: Remember Workstation & Break Glass */}
-                  <div className="flex items-center justify-between pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold opacity-90 select-none">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-[#0f766e] focus:ring-[#0f766e]"
-                      />
-                      <span>Keep workstation logged in (12h shift)</span>
-                    </label>
-
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-red-600 dark:text-red-400 select-none">
-                      <input
-                        type="checkbox"
-                        checked={breakGlassMode}
-                        onChange={(e) => setBreakGlassMode(e.target.checked)}
-                        className="h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500"
-                      />
-                      <span>Emergency ER Mode</span>
-                    </label>
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className={`w-full h-12 rounded-2xl text-xs font-black text-white shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer ${
-                      selectedRole === "superadmin"
-                        ? "bg-[#a34e36] hover:bg-[#8c3f2a] shadow-[#a34e36]/30"
-                        : "bg-gradient-to-r from-[#0f766e] via-[#0d9488] to-[#0284c7] hover:opacity-95 shadow-[#0f766e]/30"
-                    }`}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        AUTHENTICATING HIPAA SESSION...
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        <span>SIGN IN SECURELY TO WORKSPACE</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </span>
-                    )}
-                  </button>
-                </form>
-              )}
-
-
-              {/* ==================== MODE 2: MEDICAL PIN CODE MODE ==================== */}
-              {authMethod === "pin" && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (pinInput.length >= 4) {
-                      submitPinAuth(pinInput);
-                    }
-                  }}
-                  className="space-y-5 animate-fade-in"
-                >
-                  <div className="text-center space-y-1">
-                    <p className="text-xs font-bold text-[#172522] dark:text-white">
-                      Enter {configuredPinLength}-Digit Medical PIN Code
-                    </p>
-                    <p className="text-[11px] opacity-70">
-                      Quick shift unlock using your configured {configuredPinLength}-digit Device PIN
-                    </p>
-                  </div>
-
-                  {formError && (
-                    <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300 animate-fade-in">
-                      <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="font-bold text-rose-800 dark:text-rose-200 font-sans">PIN Verification Failed</p>
-                        <p className="text-[11px] font-medium opacity-90 mt-0.5">{formError}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormError(null)}
-                        className="text-rose-500 hover:text-rose-700 p-0.5"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* OTP-Style Segmented Box Input */}
-                  <div className="space-y-3">
-                    <div className="relative max-w-xs mx-auto">
-                      {/* Hidden/Overlay Physical Keyboard Capture Input */}
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        maxLength={configuredPinLength}
-                        autoFocus
-                        value={pinInput}
-                        onChange={(e) => handlePinInputChange(e.target.value)}
-                        className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
-                      />
-
-                      {/* Dynamic OTP Boxes Row (4 or 6 slots matching configured PIN length) */}
-                      <div className="flex items-center justify-center gap-2.5">
-                        {Array.from({ length: configuredPinLength }).map((_, idx) => {
-                          const isFilled = idx < pinInput.length;
-                          const isCurrent = idx === pinInput.length;
-                          const digitValue = pinInput[idx] || "";
-                          const isPeeking = idx === peekCharIndex;
-
-                          return (
-                            <div
-                              key={idx}
-                              className={`h-12 w-11 rounded-xl border-2 flex items-center justify-center text-lg font-mono font-black transition-all relative ${
-                                isFilled
-                                  ? "border-[#0f766e] bg-[#0f766e]/15 text-[#0f766e] dark:text-teal-300 shadow-md scale-105"
-                                  : isCurrent
-                                  ? "border-[#0f766e] bg-white dark:bg-slate-900 shadow-sm ring-2 ring-[#0f766e]/30 animate-pulse"
-                                  : "border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 opacity-60"
-                              }`}
-                            >
-                              {isFilled ? (
-                                showPinDigits || isPeeking ? (
-                                  <span className="text-[#0f766e] dark:text-teal-300 animate-fade-in font-bold">
-                                    {digitValue}
-                                  </span>
-                                ) : (
-                                  <span className="text-xl">•</span>
-                                )
-                              ) : (
-                                ""
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* PIN Controls Bar: Peek Eye Toggle & Clear Button */}
-                    <div className="flex items-center justify-between max-w-xs mx-auto px-1">
-                      <button
-                        type="button"
-                        onClick={() => setShowPinDigits(!showPinDigits)}
-                        className="text-[11px] font-extrabold text-slate-500 hover:text-[#0f766e] transition-colors flex items-center gap-1 cursor-pointer select-none"
-                      >
-                        {showPinDigits ? (
-                          <>
-                            <EyeOff className="h-3.5 w-3.5 text-[#0f766e]" />
-                            <span>Hide Digits</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>Reveal Digits</span>
-                          </>
-                        )}
-                      </button>
-
-                      {pinInput.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPinInput("");
-                            setPeekCharIndex(null);
-                          }}
-                          className="text-[11px] font-bold text-rose-600 hover:text-rose-700 transition-colors cursor-pointer"
-                        >
-                          Clear Input
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={isLoading || pinInput.length < configuredPinLength}
-                    className="w-full h-12 rounded-2xl bg-[#0f766e] hover:bg-[#115e59] disabled:opacity-40 text-white text-xs font-black shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        AUTHENTICATING PIN SESSION...
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        <span>UNLOCK SHIFT SESSION ({pinInput.length} / {configuredPinLength} DIGITS)</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </span>
-                    )}
-                  </button>
-                </form>
-              )}
-
-
-
-
-
-              {/* ==================== MODE 3: BIOMETRIC FINGERPRINT PASSKEY MODE ==================== */}
-              {authMethod === "biometric" && (
-                <div className="space-y-6 text-center animate-fade-in py-3">
-                  <div>
-                    <p className="text-xs font-bold">Hospital Smart Badge Biometric Scanner</p>
-                    <p className="text-[11px] opacity-70">Touch the scanner target below to authenticate passkey</p>
-                  </div>
-
-                  {/* Animated Fingerprint Scanner Target */}
-                  <div className="flex flex-col items-center justify-center">
                     <button
                       type="button"
-                      onClick={handleBiometricScan}
-                      disabled={biometricStatus === "scanning"}
-                      className={`h-24 w-24 rounded-full border-4 flex items-center justify-center transition-all cursor-pointer relative group ${
-                        biometricStatus === "scanning"
-                          ? "border-[#0284c7] bg-[#0284c7]/20 scale-110 animate-pulse"
-                          : biometricStatus === "success"
-                          ? "border-emerald-500 bg-emerald-500/20 text-emerald-500"
-                          : "border-[#0f766e] bg-[#0f766e]/10 text-[#0f766e] hover:scale-105 hover:bg-[#0f766e]/20"
-                      }`}
+                      onClick={() => {
+                        setIsUsingRecoveryCode(true);
+                        setMfaCodeInput("");
+                        setFormError(null);
+                      }}
+                      className={`py-2 px-3 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isUsingRecoveryCode
+                          ? "bg-[#0f766e] text-white shadow-xs"
+                          : "opacity-70 hover:opacity-100"
+                        }`}
                     >
-                      {biometricStatus === "scanning" ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="h-8 w-8 animate-spin rounded-full border-3 border-teal-500 border-t-transparent" />
-                          <span className="text-[8px] font-black text-[#0284c7]">SCANNING...</span>
-                        </div>
-                      ) : biometricStatus === "success" ? (
-                        <Check className="h-10 w-10 text-emerald-500 animate-bounce" />
+                      <KeyRound className="h-4 w-4" />
+                      <span>Recovery Code</span>
+                    </button>
+                  </div>
+
+                  {formError && (
+                    <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300 animate-fade-in">
+                      <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-bold text-rose-800 dark:text-rose-200">Verification Failed</p>
+                        <p className="text-[11px] font-medium opacity-90 mt-0.5">{formError}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleVerify2FASubmit} className="space-y-4">
+                    {!isUsingRecoveryCode ? (
+                      <div>
+                        <label className="block text-xs font-extrabold mb-1.5">
+                          Enter 6-Digit Authenticator Code
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          autoFocus
+                          value={mfaCodeInput}
+                          onChange={(e) => setMfaCodeInput(e.target.value.replace(/\D/g, ""))}
+                          placeholder="e.g. 123456"
+                          className="h-12 w-full text-center tracking-[0.5em] font-mono text-xl font-black rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 text-[#172522] dark:text-white outline-none focus:border-[#0f766e] shadow-xs"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-extrabold mb-1.5">
+                          Enter 8-Character Backup Recovery Code
+                        </label>
+                        <input
+                          type="text"
+                          autoFocus
+                          value={mfaCodeInput}
+                          onChange={(e) => setMfaCodeInput(e.target.value.toUpperCase())}
+                          placeholder="e.g. A7B9-K2P4"
+                          className="h-12 w-full text-center tracking-widest font-mono text-base font-black uppercase rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 text-[#172522] dark:text-white outline-none focus:border-[#0f766e] shadow-xs"
+                        />
+                        <p className="text-[10px] opacity-75 mt-1 text-center">
+                          Each recovery code can only be used once.
+                        </p>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isLoading || !mfaCodeInput}
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#115e59] hover:to-[#0f766e] text-white text-xs font-black shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center gap-2">
+                          <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                          Verifying 2FA Code...
+                        </span>
                       ) : (
-                        <Fingerprint className="h-12 w-12 animate-pulse-soft group-hover:scale-110 transition-all" />
+                        <>
+                          <ShieldCheck className="h-4 w-4 text-white" />
+                          <span>Verify & Sign In</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </>
                       )}
-                      
-                      {/* Pulse Ripple Rings */}
-                      <span className="absolute inset-0 rounded-full border border-[#0f766e]/40 animate-ping pointer-events-none" />
                     </button>
 
-                    <p className="text-[11px] font-extrabold text-[#0f766e] dark:text-teal-300 mt-3">
-                      {biometricStatus === "idle" && "Click or Tap Scanner Target"}
-                      {biometricStatus === "scanning" && "Verifying Security Token & Fingerprint..."}
-                      {biometricStatus === "success" && "Biometric Identity Confirmed!"}
-                    </p>
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIs2FACardActive(false);
+                          setAuthMethod("password");
+                          setMfaCodeInput("");
+                          setFormError(null);
+                        }}
+                        className="text-xs font-bold text-[#0f766e] dark:text-teal-400 hover:underline cursor-pointer"
+                      >
+                        ← Back to Standard Password Login
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className="space-y-6">
+
+                  {/* EMERGENCY ER BREAK-GLASS WARNING STATE BANNER */}
+                  {breakGlassMode && (
+                    <div className="rounded-2xl border-2 border-red-500/60 bg-red-500/10 p-3.5 flex items-start gap-3 animate-pulse-soft">
+                      <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-black text-red-900 dark:text-red-200">
+                          EMERGENCY ACCESS (BREAK-GLASS MODE ACTIVE)
+                        </p>
+                        <p className="text-[10px] font-semibold text-red-700 dark:text-red-300 leading-relaxed mt-0.5">
+                          Bypassing standard multi-factor verification for urgent care triage. All actions taken in this session are escalated directly to Hospital Compliance Officers.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Role Selection Grid */}
+                  <div>
+                    <label className="block text-[11px] font-extrabold uppercase opacity-70 mb-2">
+                      Select Account Role
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+
+                      {/* Doctor Role */}
+                      <button
+                        type="button"
+                        onClick={() => handleRoleSelect("doctor")}
+                        className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${selectedRole === "doctor"
+                            ? "border-[#0f766e] bg-[#0f766e] text-white shadow-md scale-[1.02]"
+                            : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
+                          }`}
+                      >
+                        <UserCheck className="h-4 w-4" />
+                        <span>Clinician</span>
+                        <span className="text-[9px] font-normal opacity-80">Doctor / Nurse</span>
+                      </button>
+
+                      {/* Admin / Tenant Role */}
+                      <button
+                        type="button"
+                        onClick={() => handleRoleSelect("admin")}
+                        className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${selectedRole === "admin"
+                            ? "border-[#0f766e] bg-[#0f766e] text-white shadow-md scale-[1.02]"
+                            : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
+                          }`}
+                      >
+                        <Building2 className="h-4 w-4" />
+                        <span>Facility / Tenant Admin</span>
+                        <span className="text-[9px] font-normal opacity-80">Hospital & Tenant Admin</span>
+                      </button>
+
+                      {/* Super Admin Role */}
+                      <button
+                        type="button"
+                        onClick={() => handleRoleSelect("superadmin")}
+                        className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${selectedRole === "superadmin"
+                            ? "border-[#a34e36] bg-[#a34e36] text-white shadow-md scale-[1.02]"
+                            : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
+                          }`}
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>Super Admin</span>
+                        <span className="text-[9px] font-normal opacity-80">System Owner</span>
+                      </button>
+
+                      {/* Patient Portal */}
+                      <button
+                        type="button"
+                        onClick={() => handleRoleSelect("patient")}
+                        className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${selectedRole === "patient"
+                            ? "border-[#0284c7] bg-[#0284c7] text-white shadow-md scale-[1.02]"
+                            : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
+                          }`}
+                      >
+                        <Stethoscope className="h-4 w-4" />
+                        <span>Patient Care</span>
+                        <span className="text-[9px] font-normal opacity-80">Self Portal</span>
+                      </button>
+                    </div>
                   </div>
+
+
+                  {/* ==================== MODE 1: STANDARD PASSWORD FORM ==================== */}
+                  {authMethod === "password" && (
+                    <form onSubmit={handleSubmit} className="space-y-4 animate-fade-in">
+
+                      {/* Authentication Error Banner */}
+                      {formError && (
+                        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300 animate-fade-in">
+                          <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="font-bold text-rose-800 dark:text-rose-200">Authentication Failed</p>
+                            <p className="text-[11px] font-medium opacity-90 mt-0.5">{formError}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setFormError(null)}
+                            className="text-rose-500 hover:text-rose-700 p-0.5"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+
+
+                      {/* Email Field */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold">
+                            Authorized Work Email
+                          </label>
+                          <span className="text-[10px] font-bold text-[#0f766e] dark:text-teal-400">
+                            {selectedRole === "doctor" && "Doctor Identity Verified"}
+                            {selectedRole === "admin" && "Facility / Tenant Administrator"}
+                            {selectedRole === "superadmin" && "Root Super Admin"}
+                            {selectedRole === "patient" && "Patient Access Pass"}
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                          <input
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder={
+                              selectedRole === "superadmin"
+                                ? "superadmin@medicarehms.com"
+                                : selectedRole === "admin"
+                                  ? "admin.facility@medicarehms.com"
+                                  : selectedRole === "doctor"
+                                    ? "dr.sarah@medicarehms.com"
+                                    : "patient.care@medicarehms.com"
+                            }
+                            className="h-11 w-full rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 pl-10 pr-4 text-xs font-bold outline-none transition-all placeholder:opacity-50 focus:border-[#0f766e] focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#0f766e]/20 shadow-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Password Field */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold">
+                            Account Password
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowForgotModal(true)}
+                            className="text-[11px] font-bold text-[#a34e36] hover:underline cursor-pointer"
+                          >
+                            Forgot Password?
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Enter password..."
+                            className="h-11 w-full rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 pl-10 pr-12 text-xs font-bold outline-none transition-all placeholder:opacity-50 focus:border-[#0f766e] focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#0f766e]/20 shadow-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowPassword((prev) => !prev);
+                            }}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer z-20 touch-manipulation active:scale-95"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+
+                      {/* Checkboxes: Remember Workstation & Break Glass */}
+                      <div className="flex items-center justify-between pt-1">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold opacity-90 select-none">
+                          <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-[#0f766e] focus:ring-[#0f766e]"
+                          />
+                          <span>Keep workstation logged in (12h shift)</span>
+                        </label>
+
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-red-600 dark:text-red-400 select-none">
+                          <input
+                            type="checkbox"
+                            checked={breakGlassMode}
+                            onChange={(e) => setBreakGlassMode(e.target.checked)}
+                            className="h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+                          />
+                          <span>Emergency ER Mode</span>
+                        </label>
+                      </div>
+
+                      {/* Submit Button */}
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className={`w-full h-12 rounded-2xl text-xs font-black text-white shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer ${selectedRole === "superadmin"
+                            ? "bg-[#a34e36] hover:bg-[#8c3f2a] shadow-[#a34e36]/30"
+                            : "bg-gradient-to-r from-[#0f766e] via-[#0d9488] to-[#0284c7] hover:opacity-95 shadow-[#0f766e]/30"
+                          }`}
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center gap-2">
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            AUTHENTICATING HIPAA SESSION...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <span>SIGN IN SECURELY TO WORKSPACE</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </span>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+
+                  {/* ==================== MODE 2: MEDICAL PIN CODE MODE ==================== */}
+                  {authMethod === "pin" && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (pinInput.length >= 4) {
+                          submitPinAuth(pinInput);
+                        }
+                      }}
+                      className="space-y-5 animate-fade-in"
+                    >
+                      <div className="text-center space-y-1">
+                        <p className="text-xs font-bold text-[#172522] dark:text-white">
+                          Enter {configuredPinLength}-Digit Medical PIN Code
+                        </p>
+                        <p className="text-[11px] opacity-70">
+                          Quick shift unlock using your configured {configuredPinLength}-digit Device PIN
+                        </p>
+                      </div>
+
+                      {formError && (
+                        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300 animate-fade-in">
+                          <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="font-bold text-rose-800 dark:text-rose-200 font-sans">PIN Verification Failed</p>
+                            <p className="text-[11px] font-medium opacity-90 mt-0.5">{formError}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setFormError(null)}
+                            className="text-rose-500 hover:text-rose-700 p-0.5"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* OTP-Style Segmented Box Input */}
+                      <div className="space-y-3">
+                        <div className="relative max-w-xs mx-auto">
+                          {/* Hidden/Overlay Physical Keyboard Capture Input */}
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="\d*"
+                            maxLength={configuredPinLength}
+                            autoFocus
+                            value={pinInput}
+                            onChange={(e) => handlePinInputChange(e.target.value)}
+                            className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+                          />
+
+                          {/* Dynamic OTP Boxes Row (4 or 6 slots matching configured PIN length) */}
+                          <div className="flex items-center justify-center gap-2.5">
+                            {Array.from({ length: configuredPinLength }).map((_, idx) => {
+                              const isFilled = idx < pinInput.length;
+                              const isCurrent = idx === pinInput.length;
+                              const digitValue = pinInput[idx] || "";
+                              const isPeeking = idx === peekCharIndex;
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`h-12 w-11 rounded-xl border-2 flex items-center justify-center text-lg font-mono font-black transition-all relative ${isFilled
+                                      ? "border-[#0f766e] bg-[#0f766e]/15 text-[#0f766e] dark:text-teal-300 shadow-md scale-105"
+                                      : isCurrent
+                                        ? "border-[#0f766e] bg-white dark:bg-slate-900 shadow-sm ring-2 ring-[#0f766e]/30 animate-pulse"
+                                        : "border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 opacity-60"
+                                    }`}
+                                >
+                                  {isFilled ? (
+                                    showPinDigits || isPeeking ? (
+                                      <span className="text-[#0f766e] dark:text-teal-300 animate-fade-in font-bold">
+                                        {digitValue}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xl">•</span>
+                                    )
+                                  ) : (
+                                    ""
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* PIN Controls Bar: Peek Eye Toggle & Clear Button */}
+                        <div className="flex items-center justify-between max-w-xs mx-auto px-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowPinDigits(!showPinDigits)}
+                            className="text-[11px] font-extrabold text-slate-500 hover:text-[#0f766e] transition-colors flex items-center gap-1 cursor-pointer select-none"
+                          >
+                            {showPinDigits ? (
+                              <>
+                                <EyeOff className="h-3.5 w-3.5 text-[#0f766e]" />
+                                <span>Hide Digits</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>Reveal Digits</span>
+                              </>
+                            )}
+                          </button>
+
+                          {pinInput.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPinInput("");
+                                setPeekCharIndex(null);
+                              }}
+                              className="text-[11px] font-bold text-rose-600 hover:text-rose-700 transition-colors cursor-pointer"
+                            >
+                              Clear Input
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Submit Button */}
+                      <button
+                        type="submit"
+                        disabled={isLoading || pinInput.length < configuredPinLength}
+                        className="w-full h-12 rounded-2xl bg-[#0f766e] hover:bg-[#115e59] disabled:opacity-40 text-white text-xs font-black shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center gap-2">
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            AUTHENTICATING PIN SESSION...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <span>UNLOCK SHIFT SESSION ({pinInput.length} / {configuredPinLength} DIGITS)</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </span>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+
+
+
+
+                  {/* ==================== MODE 3: BIOMETRIC FINGERPRINT PASSKEY MODE ==================== */}
+                  {authMethod === "biometric" && (
+                    <div className="space-y-6 text-center animate-fade-in py-3">
+                      <div>
+                        <p className="text-xs font-bold">Hospital Smart Badge Biometric Scanner</p>
+                        <p className="text-[11px] opacity-70">Touch the scanner target below to authenticate passkey</p>
+                      </div>
+
+                      {/* Animated Fingerprint Scanner Target */}
+                      <div className="flex flex-col items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={handleBiometricScan}
+                          disabled={biometricStatus === "scanning"}
+                          className={`h-24 w-24 rounded-full border-4 flex items-center justify-center transition-all cursor-pointer relative group ${biometricStatus === "scanning"
+                              ? "border-[#0284c7] bg-[#0284c7]/20 scale-110 animate-pulse"
+                              : biometricStatus === "success"
+                                ? "border-emerald-500 bg-emerald-500/20 text-emerald-500"
+                                : "border-[#0f766e] bg-[#0f766e]/10 text-[#0f766e] hover:scale-105 hover:bg-[#0f766e]/20"
+                            }`}
+                        >
+                          {biometricStatus === "scanning" ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="h-8 w-8 animate-spin rounded-full border-3 border-teal-500 border-t-transparent" />
+                              <span className="text-[8px] font-black text-[#0284c7]">SCANNING...</span>
+                            </div>
+                          ) : biometricStatus === "success" ? (
+                            <Check className="h-10 w-10 text-emerald-500 animate-bounce" />
+                          ) : (
+                            <Fingerprint className="h-12 w-12 animate-pulse-soft group-hover:scale-110 transition-all" />
+                          )}
+
+                          {/* Pulse Ripple Rings */}
+                          <span className="absolute inset-0 rounded-full border border-[#0f766e]/40 animate-ping pointer-events-none" />
+                        </button>
+
+                        <p className="text-[11px] font-extrabold text-[#0f766e] dark:text-teal-300 mt-3">
+                          {biometricStatus === "idle" && "Click or Tap Scanner Target"}
+                          {biometricStatus === "scanning" && "Verifying Security Token & Fingerprint..."}
+                          {biometricStatus === "success" && "Biometric Identity Confirmed!"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               )}
-
             </div>
-          )}
-        </div>
 
             {/* Bottom Security Notice Banner */}
             <div className="pt-4 mt-6 border-t border-white/60 dark:border-slate-800">

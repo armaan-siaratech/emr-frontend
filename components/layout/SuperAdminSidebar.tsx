@@ -256,29 +256,56 @@ export default function SuperAdminSidebar({
           ))}
         </div>
 
-        {/* Footer Profile Box */}
-        <div className="border-t border-[#14b8a6]/15 p-3">
-          <Link
-            href="/super-admin/profile"
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 rounded-xl p-2 transition-all hover:bg-teal-950/80 ${
-              collapsed ? "lg:justify-center" : ""
-            }`}
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0f766e] font-black text-xs text-white border border-teal-400/30 shadow-xs">
-              {initials}
-            </div>
-            <div className={`truncate flex-1 ${collapsed ? "lg:hidden" : ""}`}>
-              <p className="text-xs font-bold text-white truncate">
-                {displayName}
-              </p>
-              <p className="text-[10px] text-teal-400 font-semibold truncate">
-                SuperAdmin Profile
-              </p>
-            </div>
-          </Link>
+        {/* Footer Profile Box & Logout */}
+        <div className="border-t border-[#14b8a6]/15 p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/super-admin/profile"
+              onClick={() => setMobileOpen(false)}
+              className={`flex flex-1 items-center gap-3 rounded-xl p-2 transition-all hover:bg-teal-950/80 min-w-0 ${
+                collapsed ? "lg:justify-center" : ""
+              }`}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0f766e] font-black text-xs text-white border border-teal-400/30 shadow-xs">
+                {initials}
+              </div>
+              <div className={`truncate flex-1 ${collapsed ? "lg:hidden" : ""}`}>
+                <p className="text-xs font-bold text-white truncate">
+                  {displayName}
+                </p>
+                <p className="text-[10px] text-teal-400 font-semibold truncate">
+                  SuperAdmin Profile
+                </p>
+              </div>
+            </Link>
+            {!collapsed && (
+              <button
+                onClick={async () => {
+                  await logout();
+                  if (typeof window !== "undefined") window.location.href = "/login";
+                }}
+                title="Logout"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-950/60 border border-rose-800/50 text-rose-300 hover:bg-rose-900 hover:text-white transition-all cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {collapsed && (
+            <button
+              onClick={async () => {
+                await logout();
+                if (typeof window !== "undefined") window.location.href = "/login";
+              }}
+              title="Logout"
+              className="flex w-full h-9 items-center justify-center rounded-xl bg-rose-950/60 border border-rose-800/50 text-rose-300 hover:bg-rose-900 hover:text-white transition-all cursor-pointer"
+            >
+              <LogOut className="h-4.5 w-4.5" />
+            </button>
+          )}
         </div>
       </aside>
     </>
   );
 }
+

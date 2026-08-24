@@ -117,46 +117,12 @@ export async function getAuditLogsApi(limit = 50, offset = 0, action?: string): 
   return apiClient<{ total: number; logs: AuditLogItem[] }>(`/api/account/audit-logs?${params.toString()}`);
 }
 
-export interface TenantItem {
-  id: string;
-  name: string;
-  slug: string;
-  code: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postal_code?: string;
-  timezone: string;
-  status: "active" | "inactive" | "suspended";
-  created_at: string;
-  updated_at: string;
-}
+export type { TenantItem, TenantCreateData, TenantUpdateData } from "./tenantApi";
+export {
+  getTenantsApi,
+  getTenantBySlugApi,
+  createTenantApi,
+  updateTenantApi,
+  deleteTenantApi,
+} from "./tenantApi";
 
-export interface TenantCreateData {
-  name: string;
-  slug: string;
-  code: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postal_code?: string;
-  timezone?: string;
-  status?: "active" | "inactive" | "suspended";
-}
-
-export async function getTenantsApi(): Promise<TenantItem[]> {
-  return apiClient<TenantItem[]>("/api/account/tenants");
-}
-
-export async function createTenantApi(data: TenantCreateData): Promise<TenantItem> {
-  return apiClient<TenantItem>("/api/account/tenants", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}

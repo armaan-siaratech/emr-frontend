@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "./SidebarContext";
+import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard,
   Users,
@@ -22,12 +23,38 @@ import {
   Activity,
   ClipboardList,
   FolderKanban,
+  LogOut,
   X
 } from "lucide-react";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const sidebar = useSidebar();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
+  const displayName =
+    user?.first_name && user?.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user?.first_name
+      ? user.first_name
+      : user?.email || "Facility User";
+
+  const initials =
+    user?.first_name && user?.last_name
+      ? `${user.first_name[0]}${user.last_name[0]}`.toUpperCase()
+      : user?.email
+      ? user.email.substring(0, 2).toUpperCase()
+      : "US";
+
+  const designation =
+    user?.designation ||
+    (user?.roles?.length ? user.roles.join(", ") : "Hospital Operations");
 
   const collapsed = sidebar?.collapsed ?? false;
   const toggle = sidebar?.toggle ?? (() => {});
@@ -236,29 +263,48 @@ export default function Sidebar() {
           ))}
         </div>
 
-        {/* Footer Admin Badge */}
-        <div className="border-t border-[#14b8a6]/15 p-3">
+        {/* Footer Admin Badge & Logout */}
+        <div className="border-t border-[#14b8a6]/15 p-3 space-y-2">
           <div
             className={`flex items-center gap-3 rounded-xl p-2 bg-teal-950/40 border border-teal-800/30 ${
               collapsed ? "justify-center" : ""
             }`}
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0f766e] font-black text-xs text-white border border-teal-400/30 shadow-xs">
-              AD
+              {initials}
             </div>
             {!collapsed && (
-              <div className="truncate flex-1">
+              <div className="truncate flex-1 min-w-0">
                 <p className="text-xs font-bold text-white truncate">
-                  Facility Administrator
+                  {displayName}
                 </p>
                 <p className="text-[10px] text-teal-400 font-semibold truncate">
-                  Hospital Operations
+                  {designation}
                 </p>
               </div>
             )}
+            {!collapsed && (
+              <button
+                onClick={handleLogout}
+                title="Logout"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-950/60 border border-rose-800/50 text-rose-300 hover:bg-rose-900 hover:text-white transition-all cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
           </div>
+          {collapsed && (
+            <button
+              onClick={handleLogout}
+              title="Logout"
+              className="flex w-full h-9 items-center justify-center rounded-xl bg-rose-950/60 border border-rose-800/50 text-rose-300 hover:bg-rose-900 hover:text-white transition-all cursor-pointer"
+            >
+              <LogOut className="h-4.5 w-4.5" />
+            </button>
+          )}
         </div>
       </aside>
     </>
   );
 }
+

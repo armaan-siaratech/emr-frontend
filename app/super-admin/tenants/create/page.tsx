@@ -36,6 +36,7 @@ export default function SuperAdminCreateTenantPage() {
   const [slug, setSlug] = useState("");
   const [code, setCode] = useState("TEN-MED-849");
   const [email, setEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("Admin@123456");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -44,6 +45,7 @@ export default function SuperAdminCreateTenantPage() {
   const [postalCode, setPostalCode] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
   const [status, setStatus] = useState<"active" | "inactive" | "suspended">("active");
+
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -114,7 +116,10 @@ export default function SuperAdminCreateTenantPage() {
         postal_code: postalCode.trim() || undefined,
         timezone: timezone,
         status: status,
+        admin_email: email.trim() || undefined,
+        admin_password: adminPassword.trim() || "Admin@123456",
       });
+
 
       setSubmitted(true);
       setTimeout(() => {
@@ -160,21 +165,30 @@ export default function SuperAdminCreateTenantPage() {
           </div>
 
           {/* REAL-TIME DOMAIN PREVIEW BADGE */}
-          <div className="p-3 rounded-2xl bg-gradient-to-r from-[#062420] via-[#0b3c36] to-[#041a17] text-white shadow-xl border border-teal-500/30 flex items-center gap-3 self-start lg:self-auto min-w-[280px]">
-            <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
-              <Globe className="h-5 w-5 text-teal-300 animate-pulse" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-teal-300">
-                <span>Live Domain URL</span>
-                <span className="flex items-center gap-1 text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  Active
-                </span>
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#062420] via-[#0b3c36] to-[#041a17] text-white shadow-xl border border-teal-500/30 flex flex-col gap-2.5 self-start lg:self-auto min-w-[310px]">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                <Globe className="h-5 w-5 text-teal-300 animate-pulse" />
               </div>
-              <p className="font-mono text-xs font-black text-white truncate mt-0.5">
-                https://{slug || "tenant-slug"}.ethizo.com
-              </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-teal-300">
+                  <span>Live Production Domain</span>
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    Active
+                  </span>
+                </div>
+                <p className="font-mono text-xs font-black text-white truncate mt-0.5">
+                  https://{slug || "tenant-slug"}.ethizo.com
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-teal-500/20 flex items-center justify-between text-[10px] font-extrabold text-teal-200">
+              <span className="text-cyan-300">Local Dev URL:</span>
+              <span className="font-mono text-[#72d4bd] bg-white/10 px-2 py-0.5 rounded-lg border border-white/10">
+                http://localhost:3000/?tenant={slug || "slug"}
+              </span>
             </div>
           </div>
         </div>

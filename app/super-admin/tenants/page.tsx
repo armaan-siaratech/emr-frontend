@@ -20,62 +20,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const initialTenants: TenantItem[] = [
-  {
-    id: "1",
-    name: "Apex Healthcare Network",
-    slug: "apex-healthcare",
-    code: "TEN-APEX-01",
-    email: "contact@apexhealth.com",
-    phone: "(555) 123-4567",
-    address: "100 Medical Center Parkway",
-    city: "Boston",
-    state: "MA",
-    country: "United States",
-    postal_code: "02115",
-    timezone: "America/New_York",
-    status: "active",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    name: "Green Valley Medical Group",
-    slug: "green-valley-med",
-    code: "TEN-GVM-02",
-    email: "info@greenvalleymed.org",
-    phone: "(555) 348-2190",
-    address: "240 Hospital Drive",
-    city: "San Diego",
-    state: "CA",
-    country: "United States",
-    postal_code: "92101",
-    timezone: "America/Los_Angeles",
-    status: "active",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    name: "Sunrise Care System",
-    slug: "sunrise-care",
-    code: "TEN-SHC-03",
-    email: "admin@sunrisecare.com",
-    phone: "(555) 491-8230",
-    address: "88 Health Boulevard",
-    city: "Irvine",
-    state: "CA",
-    country: "United States",
-    postal_code: "92618",
-    timezone: "America/Los_Angeles",
-    status: "active",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
-
 export default function SuperAdminTenantsPage() {
-  const [tenants, setTenants] = useState<TenantItem[]>(initialTenants);
+  const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
@@ -84,11 +30,12 @@ export default function SuperAdminTenantsPage() {
     setIsLoading(true);
     getTenantsApi()
       .then((data) => {
-        if (data && data.length > 0) {
-          setTenants(data);
-        }
+        setTenants(Array.isArray(data) ? data : []);
       })
-      .catch((err) => console.error("Failed to load tenants from backend:", err))
+      .catch((err) => {
+        console.error("Failed to load tenants from backend:", err);
+        setTenants([]);
+      })
       .finally(() => setIsLoading(false));
   };
 
@@ -138,6 +85,15 @@ export default function SuperAdminTenantsPage() {
               <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
               <span>Refresh</span>
             </button>
+
+            <Link
+              href="/register-tenant"
+              target="_blank"
+              className="h-10 px-3.5 rounded-2xl bg-white border border-[#bfe0d6] text-xs font-extrabold text-[#0f766e] shadow-xs hover:bg-[#e6f4f0] transition-all flex items-center gap-1.5"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span>Public Registration Portal</span>
+            </Link>
 
             {/* DIRECT FULL PAGE REGISTRATION LINK */}
             <Link
@@ -245,53 +201,100 @@ export default function SuperAdminTenantsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e4f2ee]">
-              {filteredTenants.map((t) => (
-                <tr key={t.id} className="hover:bg-[#f2faf7] transition-colors">
-                  <td className="p-3.5 font-bold text-[#0f2d28]">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-[#d6ece6] text-[#0f766e] font-black flex items-center justify-center text-sm shadow-xs">
-                        {t.name.charAt(0)}
+              {filteredTenants.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="h-12 w-12 rounded-2xl bg-[#e4f2ee] text-[#0f766e] flex items-center justify-center">
+                        <Building2 className="h-6 w-6" />
                       </div>
-                      <div>
-                        <p className="font-bold text-[#0f2d28]">{t.name}</p>
-                        <p className="text-[10px] text-[#0f766e] font-mono">/{t.slug}</p>
-                      </div>
+                      <p className="text-sm font-bold text-[#0f2d28]">No Tenant Organizations Found</p>
+                      <p className="text-xs text-[#5c7a72] max-w-sm">
+                        {search || filter !== "All"
+                          ? "No tenants match your search/filter criteria."
+                          : "No healthcare tenants exist in the database yet. Provision your first tenant to get started."}
+                      </p>
+                      {!search && filter === "All" && (
+                        <Link
+                          href="/super-admin/tenants/create"
+                          className="mt-2 px-4 py-2 rounded-xl bg-[#0f766e] text-white text-xs font-bold hover:bg-[#0d5c56] transition-all flex items-center gap-1.5 shadow-xs"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Add Tenant</span>
+                        </Link>
+                      )}
                     </div>
                   </td>
-                  <td className="p-3.5 font-mono font-bold text-[#0f766e]">{t.code}</td>
-                  <td className="p-3.5 font-semibold text-[#0f2d28]">
-                    {t.city ? `${t.city}, ${t.state || ""} ${t.country || ""}` : "Global / Remote"}
-                  </td>
-                  <td className="p-3.5 font-mono text-[#5c7a72] text-[11px]">
-                    {t.email || t.phone || "N/A"}
-                  </td>
-                  <td className="p-3.5 font-mono text-[11px] text-slate-600">
-                    {t.timezone}
-                  </td>
-                  <td className="p-3.5">
-                    <span
-                      className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                        t.status === "active"
-                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                          : t.status === "suspended"
-                          ? "bg-rose-100 text-rose-800 border border-rose-300"
-                          : "bg-slate-100 text-slate-700 border border-slate-300"
-                      }`}
-                    >
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <Link
-                      href="/super-admin/tenants/create"
-                      className="rounded-lg p-1.5 text-[#0f766e] hover:bg-[#e4f2ee] transition-colors outline-none inline-block font-bold text-xs cursor-pointer"
-                      title="Edit Tenant"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Link>
-                  </td>
                 </tr>
-              ))}
+              ) : (
+                filteredTenants.map((t) => (
+                  <tr key={t.id} className="hover:bg-[#f2faf7] transition-colors">
+                    <td className="p-3.5 font-bold text-[#0f2d28]">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-[#d6ece6] text-[#0f766e] font-black flex items-center justify-center text-sm shadow-xs shrink-0">
+                          {t.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-[#0f2d28]">{t.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <a
+                              href={`https://${t.slug}.ethizo.com`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] text-[#0f766e] font-mono hover:underline inline-flex items-center gap-0.5"
+                              title="Live Production Subdomain"
+                            >
+                              https://{t.slug}.ethizo.com
+                            </a>
+                            <span className="text-slate-300">•</span>
+                            <a
+                              href={`http://localhost:3000/?tenant=${t.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] text-[#0284c7] font-mono hover:underline inline-flex items-center gap-0.5"
+                              title="Local Development Link"
+                            >
+                              local: ?tenant={t.slug}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3.5 font-mono font-bold text-[#0f766e]">{t.code}</td>
+                    <td className="p-3.5 font-semibold text-[#0f2d28]">
+                      {t.city ? `${t.city}, ${t.state || ""} ${t.country || ""}` : "Global / Remote"}
+                    </td>
+                    <td className="p-3.5 font-mono text-[#5c7a72] text-[11px]">
+                      {t.email || t.phone || "N/A"}
+                    </td>
+                    <td className="p-3.5 font-mono text-[11px] text-slate-600">
+                      {t.timezone}
+                    </td>
+                    <td className="p-3.5">
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                          t.status === "active"
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                            : t.status === "suspended"
+                            ? "bg-rose-100 text-rose-800 border border-rose-300"
+                            : "bg-slate-100 text-slate-700 border border-slate-300"
+                        }`}
+                      >
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <Link
+                        href="/super-admin/tenants/create"
+                        className="rounded-lg p-1.5 text-[#0f766e] hover:bg-[#e4f2ee] transition-colors outline-none inline-block font-bold text-xs cursor-pointer"
+                        title="Edit Tenant"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

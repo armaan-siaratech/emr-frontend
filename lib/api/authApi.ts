@@ -121,6 +121,7 @@ export type { TenantItem, TenantCreateData, TenantUpdateData } from "./tenantApi
 export {
   getTenantsApi,
   getTenantBySlugApi,
+  getTenantByIdApi,
   createTenantApi,
   updateTenantApi,
   deleteTenantApi,

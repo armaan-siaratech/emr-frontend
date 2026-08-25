@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<AuthResponse>;
@@ -30,6 +31,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return userData.roles.some((role) =>
       ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(role)
     );
+  }, []);
+
+  const checkIsAdminRole = useCallback((userData: User | null): boolean => {
+    if (!userData) return false;
+    const roles: string[] = userData.roles || [];
+    const isSuper = roles.some((r) => ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r));
+    const hasExplicitAdminRole = roles.some((r) => ["ADMIN", "admin", "TENANT_ADMIN", "tenant_admin", "TenantAdmin", "facility_admin", "FacilityAdmin"].includes(r));
+    const isDoctor = roles.some((r) => ["DOCTOR", "doctor", "NURSE", "nurse", "CLINICIAN", "clinician", "Doctor", "Nurse"].includes(r));
+    const isPatient = roles.some((r) => ["PATIENT", "patient", "Patient"].includes(r));
+    const isTenantUser = !!userData.tenant_id;
+    return hasExplicitAdminRole || (isTenantUser && !isSuper && !isDoctor && !isPatient);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -109,14 +121,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           return res.user;
         }
-      throw new Error("Invalid 2FA verification response");
-    } catch (err: any) {
-      setIsLoading(false);
-      const message = err?.message || "Invalid 2FA Authenticator code or Recovery code.";
-      setError(message);
-      throw err;
-    }
-  }, []);
+        throw new Error("Invalid 2FA verification response");
+      } catch (err: any) {
+        setIsLoading(false);
+        const message = err?.message || "Invalid 2FA Authenticator code or Recovery code.";
+        setError(message);
+        throw err;
+      }
+    },
+    []
+  );
 
   const logout = useCallback(async (): Promise<void> => {
     setIsLoading(true);
@@ -135,12 +149,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAuthenticated = !!user;
   const isSuperAdmin = useMemo(() => checkUserRoles(user), [user, checkUserRoles]);
+  const isAdmin = useMemo(() => checkIsAdminRole(user), [user, checkIsAdminRole]);
 
   const contextValue = useMemo(
     () => ({
       user,
       isAuthenticated,
       isSuperAdmin,
+      isAdmin,
       isLoading,
       error,
       login,
@@ -150,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshUser,
       clearError,
     }),
-    [user, isAuthenticated, isSuperAdmin, isLoading, error, login, loginByPin, verify2FALogin, logout, refreshUser, clearError]
+    [user, isAuthenticated, isSuperAdmin, isAdmin, isLoading, error, login, loginByPin, verify2FALogin, logout, refreshUser, clearError]
   );
 
   return (

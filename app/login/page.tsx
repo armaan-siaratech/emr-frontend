@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { getTenantBySlugApi, TenantItem } from "@/lib/api/tenantApi";
 import {
   ShieldCheck,
   Lock,
@@ -32,9 +33,17 @@ import {
   Smartphone
 } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
-  const { login, loginByPin, verify2FALogin, logout, isAuthenticated, isSuperAdmin, isLoading: isAuthLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const tenantSlugParam = searchParams.get("tenant");
+
+  const { login, loginByPin, verify2FALogin, logout, isAuthenticated, isSuperAdmin, isAdmin, user, isLoading: isAuthLoading } = useAuth();
+
+  // Tenant Organization State
+  const [tenantDetails, setTenantDetails] = useState<TenantItem | null>(null);
+  const [isTenantLoading, setIsTenantLoading] = useState(false);
+  const [tenantError, setTenantError] = useState<string | null>(null);
 
   // Active role & Auth parameters
   const [selectedRole, setSelectedRole] = useState<"doctor" | "admin" | "superadmin" | "patient">("superadmin");
@@ -62,16 +71,49 @@ export default function LoginPage() {
     } catch (_) { }
   }, []);
 
-  // Strict Role Section Validator: Enforces that accounts log in strictly through their assigned role section
+  // Auto-detect and fetch Tenant Organization details by URL slug
+  useEffect(() => {
+    if (tenantSlugParam) {
+      // Auto-select Facility / Tenant Admin role if currently Super Admin
+      setSelectedRole((prev) => (prev === "superadmin" ? "admin" : prev));
+
+      setIsTenantLoading(true);
+      setTenantError(null);
+      getTenantBySlugApi(tenantSlugParam)
+        .then((tenant) => {
+          setTenantDetails(tenant);
+          if (tenant.status === "inactive" || tenant.status === "suspended") {
+            setTenantError(`Tenant organization '${tenant.name}' is currently ${tenant.status.toUpperCase()}. Access is restricted.`);
+          }
+          if (tenant.email && !email) {
+            setEmail(tenant.email);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load tenant by slug:", err);
+          setTenantError(err?.message || `Tenant organization slug '${tenantSlugParam}' not found or unreachable.`);
+        })
+        .finally(() => {
+          setIsTenantLoading(false);
+        });
+    } else {
+      setTenantDetails(null);
+      setTenantError(null);
+    }
+  }, [tenantSlugParam]);
+
+  // Role Section Validator: Enforces that accounts log in strictly through compatible role sections
   const validateUserRoleForSection = (loggedUser: any, section: "doctor" | "admin" | "superadmin" | "patient"): boolean => {
     const roles: string[] = loggedUser?.roles || [];
     const isSuper = roles.some((r) => ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r));
-    const hasAdminRole = roles.some((r) => ["ADMIN", "admin", "TENANT_ADMIN", "tenant_admin", "TenantAdmin", "facility_admin", "FacilityAdmin"].includes(r));
-    const isTenantUser = !!loggedUser?.tenant_id;
-    // Recognize explicit admin roles OR any tenant-linked user (not SuperAdmin) as a Tenant / Facility Administrator
-    const isAdmin = hasAdminRole || (isTenantUser && !isSuper);
-    const isDoctor = roles.some((r) => ["DOCTOR", "doctor", "NURSE", "nurse", "CLINICIAN", "clinician", "Doctor", "Nurse"].includes(r));
+    const hasExplicitAdminRole = roles.some((r) => ["ADMIN", "admin", "TENANT_ADMIN", "tenant_admin", "TenantAdmin", "facility_admin", "FacilityAdmin"].includes(r));
+    // Include scheduler role as a clinician capable role
+    const isDoctor = roles.some((r) => ["DOCTOR", "doctor", "NURSE", "nurse", "CLINICIAN", "clinician", "Doctor", "Nurse", "SCHEDULER", "scheduler"].includes(r));
     const isPatient = roles.some((r) => ["PATIENT", "patient", "Patient"].includes(r));
+    const isTenantUser = !!loggedUser?.tenant_id;
+
+    // Recognize explicit admin roles OR any non-clinician, non-patient tenant user as Tenant Administrator
+    const isAdmin = hasExplicitAdminRole || (isTenantUser && !isSuper && !isDoctor && !isPatient);
 
     if (section === "superadmin") {
       if (!isSuper) {
@@ -81,33 +123,25 @@ export default function LoginPage() {
     }
 
     if (section === "admin") {
+      // Admin (Facility/Tenant) section must be a tenant admin and NOT a superadmin
       if (isSuper) {
-        throw new Error("Access Denied: Super Admin accounts must log in through the Super Admin section.");
+        throw new Error("Access Denied: Super Admin accounts cannot login via the Facility/Admin section.");
       }
-      if (!isAdmin) {
+      if (!isAdmin && !hasExplicitAdminRole) {
         throw new Error("Access Denied: Your account is not a Facility / Tenant Administrator. Please select your correct Account Role section.");
       }
       return true;
     }
 
     if (section === "doctor") {
-      if (isSuper) {
-        throw new Error("Access Denied: Super Admin accounts must log in through the Super Admin section.");
-      }
-      if (isAdmin) {
-        throw new Error("Access Denied: Facility / Tenant Admin accounts must log in through the Facility / Tenant Admin section.");
-      }
-      if (!isDoctor) {
+      if (!isDoctor && !isSuper && !hasExplicitAdminRole) {
         throw new Error("Access Denied: Your account is not authorized for the Clinician section. Please select your correct Account Role section.");
       }
       return true;
     }
 
     if (section === "patient") {
-      if (isSuper || isAdmin || isDoctor) {
-        throw new Error("Access Denied: Clinical & Admin accounts must log in through their respective role section.");
-      }
-      if (!isPatient) {
+      if (!isPatient && !isSuper) {
         throw new Error("Access Denied: Your account is not a Patient account. Please select your correct Account Role section.");
       }
       return true;
@@ -143,6 +177,25 @@ export default function LoginPage() {
     }
   };
 
+  // Helper function to route users to their appropriate dashboard after successful authentication
+  const navigateUserToHome = (loggedUser: any, section: "doctor" | "admin" | "superadmin" | "patient") => {
+    const roles: string[] = loggedUser?.roles || [];
+    const isSuper = roles.some((r) => ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r));
+    const hasExplicitAdminRole = roles.some((r) => ["ADMIN", "admin", "TENANT_ADMIN", "tenant_admin", "TenantAdmin", "facility_admin", "FacilityAdmin"].includes(r));
+    const isDoctor = roles.some((r) => ["DOCTOR", "doctor", "NURSE", "nurse", "CLINICIAN", "clinician", "Doctor", "Nurse"].includes(r));
+    const isPatient = roles.some((r) => ["PATIENT", "patient", "Patient"].includes(r));
+    const isTenantUser = !!loggedUser?.tenant_id;
+    const isAdminUser = hasExplicitAdminRole || (isTenantUser && !isSuper && !isDoctor && !isPatient);
+
+    if (section === "superadmin" || isSuper) {
+      router.push("/super-admin");
+    } else if (section === "admin" || isAdminUser) {
+      router.push("/admin");
+    } else {
+      router.push("/dashboard");
+    }
+  };
+
   // Numeric keypad press handler for PIN Mode (invokes backend loginByPin)
   const submitPinAuth = async (pinString: string) => {
     if (pinString.length < 4) return;
@@ -166,11 +219,7 @@ export default function LoginPage() {
         throw valErr;
       }
 
-      if (selectedRole === "superadmin") {
-        router.push("/super-admin");
-      } else {
-        router.push("/dashboard");
-      }
+      navigateUserToHome(loggedUser, selectedRole);
     } catch (err: any) {
       setIsLoading(false);
       setFormError(err?.message || "Invalid Device PIN. Please try again.");
@@ -187,14 +236,16 @@ export default function LoginPage() {
 
   // Auto redirect if user is already logged in
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated) {
+    if (!isAuthLoading && isAuthenticated && user) {
       if (isSuperAdmin) {
         router.replace("/super-admin");
+      } else if (isAdmin) {
+        router.replace("/admin");
       } else {
         router.replace("/dashboard");
       }
     }
-  }, [isAuthLoading, isAuthenticated, isSuperAdmin, router]);
+  }, [isAuthLoading, isAuthenticated, user, isSuperAdmin, isAdmin, router]);
 
   // Interactive Showcase Left Panel Tab
   const [activeShowcaseTab, setActiveShowcaseTab] = useState<"vitals" | "ai" | "security">("vitals");
@@ -267,11 +318,7 @@ export default function LoginPage() {
         throw valErr;
       }
 
-      if (selectedRole === "superadmin") {
-        router.push("/super-admin");
-      } else {
-        router.push("/dashboard");
-      }
+      navigateUserToHome(loggedUser, selectedRole);
     } catch (err: any) {
       setFormError(
         err?.message || "Invalid credentials or backend unreachable. Please try again."
@@ -297,11 +344,7 @@ export default function LoginPage() {
         throw valErr;
       }
 
-      if (selectedRole === "superadmin") {
-        router.push("/super-admin");
-      } else {
-        router.push("/dashboard");
-      }
+      navigateUserToHome(loggedUser, selectedRole);
     } catch (err: any) {
       setIsLoading(false);
       setFormError(err?.message || "Invalid 6-digit Authenticator code or Backup Recovery code.");
@@ -766,6 +809,67 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {/* DYNAMIC TENANT ORGANIZATION IDENTITY CARD */}
+              {tenantSlugParam && (
+                <div className="rounded-2xl border border-teal-500/30 bg-gradient-to-r from-[#062420] via-[#0b3c36] to-[#041a17] text-white p-4 shadow-lg space-y-2.5 animate-fade-in my-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center shrink-0">
+                        <Building2 className="h-5 w-5 text-teal-300" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-teal-300 bg-teal-900/60 px-2 py-0.5 rounded-md border border-teal-500/30">
+                            Tenant Organization Portal
+                          </span>
+                          {tenantDetails && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              tenantDetails.status === "active"
+                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                : "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                            }`}>
+                              {tenantDetails.status.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-base font-black text-white tracking-tight mt-0.5">
+                          {isTenantLoading ? (
+                            <span className="animate-pulse">Loading Organization...</span>
+                          ) : tenantDetails ? (
+                            tenantDetails.name
+                          ) : (
+                            `Tenant Identifier: ${tenantSlugParam}`
+                          )}
+                        </h4>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => router.push("/login")}
+                      className="text-[11px] font-bold text-teal-300 hover:text-white underline cursor-pointer shrink-0"
+                    >
+                      Reset Filter
+                    </button>
+                  </div>
+
+                  {tenantDetails && (
+                    <div className="pt-2 border-t border-teal-500/20 flex flex-wrap items-center justify-between text-[11px] font-mono text-teal-200 gap-2">
+                      <span>Domain Slug: <strong className="text-white">/{tenantDetails.slug}</strong></span>
+                      <span>Tenant Code: <strong className="text-white">{tenantDetails.code}</strong></span>
+                      {tenantDetails.city && <span>City: <strong className="text-white">{tenantDetails.city}</strong></span>}
+                    </div>
+                  )}
+
+                  {tenantError && (
+                    <div className="pt-2 border-t border-rose-500/30 text-rose-300 text-xs font-bold flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+                      <span>{tenantError}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {is2FACardActive || authMethod === "2fa" ? (
                 /* ==================== 2FA VERIFICATION CHALLENGE VIEW ==================== */
@@ -1412,5 +1516,22 @@ export default function LoginPage() {
       )}
 
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen w-full flex items-center justify-center bg-[#0b1317] text-white">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+            <span className="text-sm font-bold">Loading Healthcare Workspace...</span>
+          </div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -71,6 +71,17 @@ export async function getTenantBySlugApi(slug: string): Promise<TenantItem> {
 }
 
 /**
+ * Fetch tenant organization details by ID.
+ */
+export async function getTenantByIdApi(id: string): Promise<TenantItem> {
+  try {
+    return await apiClient<TenantItem>(`/api/organization/tenants/${id}`);
+  } catch (_) {
+    return await apiClient<TenantItem>(`/api/account/tenants/${id}`);
+  }
+}
+
+/**
  * Provision / register a new tenant organization.
  */
 export async function createTenantApi(data: TenantCreateData): Promise<TenantItem> {

@@ -63,7 +63,8 @@ export default function Sidebar() {
 
   const isNavActive = (href: string) => {
     if (href === "/dashboard" && pathname === "/dashboard") return true;
-    if (href !== "/dashboard" && pathname.startsWith(href)) return true;
+    if (href === "/admin" && pathname === "/admin") return true;
+    if (href !== "/dashboard" && href !== "/admin" && pathname.startsWith(href)) return true;
     return false;
   };
 
@@ -77,10 +78,15 @@ export default function Sidebar() {
     }>;
   }> = [
     {
-      title: "Main Dashboard",
+      title: "Dashboards",
       items: [
         {
-          name: "Clinical Dashboard",
+          name: "Tenant Admin Dashboard",
+          href: "/admin",
+          icon: ShieldCheck,
+        },
+        {
+          name: "Clinical Workspace",
           href: "/dashboard",
           icon: LayoutDashboard,
         },

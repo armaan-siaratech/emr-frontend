@@ -4,12 +4,15 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import GlassCard3D from "@/components/common/GlassCard3D";
 import { getTenantsApi, TenantItem } from "@/lib/api/authApi";
+import { updateTenantApi } from "@/lib/api/tenantApi";
+import { deleteTenantApi } from "@/lib/api/tenantApi";
 import {
   Building2,
   Plus,
   Search,
   Check,
   Edit3,
+  Trash,
   RefreshCw,
   Shield,
   MapPin,
@@ -39,7 +42,25 @@ export default function SuperAdminTenantsPage() {
       .finally(() => setIsLoading(false));
   };
 
-  useEffect(() => {
+  const handleDelete = async (id: string) => {
+  try {
+    await deleteTenantApi(id);
+    loadTenants();
+  } catch (err) {
+    console.error('Failed to delete tenant', err);
+  }
+};
+
+const handleRestore = async (id: string) => {
+  try {
+    await updateTenantApi(id, { status: "active" });
+    loadTenants();
+  } catch (err) {
+    console.error('Failed to restore tenant', err);
+  }
+};
+
+useEffect(() => {
     loadTenants();
   }, []);
 
@@ -283,14 +304,30 @@ export default function SuperAdminTenantsPage() {
                         {t.status}
                       </span>
                     </td>
-                    <td className="p-3.5 text-center">
+                    <td className="p-3.5 flex items-center justify-center gap-2 text-center">
                       <Link
-                        href="/super-admin/tenants/create"
+                        href={`/super-admin/tenants/edit/${t.id}`}
                         className="rounded-lg p-1.5 text-[#0f766e] hover:bg-[#e4f2ee] transition-colors outline-none inline-block font-bold text-xs cursor-pointer"
                         title="Edit Tenant"
                       >
                         <Edit3 className="h-4 w-4" />
                       </Link>
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        className="rounded-lg p-1.5 text-[#b91c1c] hover:bg-[#fde8e8] transition-colors outline-none inline-block font-bold text-xs cursor-pointer"
+                        title="Suspend Tenant"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                      {t.status === "suspended" && (
+                        <button
+                          onClick={() => handleRestore(t.id)}
+                          className="rounded-lg p-1.5 text-[#0f766e] hover:bg-[#e0f7ff] transition-colors outline-none inline-block font-bold text-xs cursor-pointer"
+                          title="Restore Tenant"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

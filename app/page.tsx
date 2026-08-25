@@ -7,13 +7,15 @@ import { ShieldCheck, HeartPulse } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
-  const { isAuthenticated, isSuperAdmin, isLoading } = useAuth();
+  const { isAuthenticated, isSuperAdmin, isAdmin, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
         if (isSuperAdmin) {
           router.replace("/super-admin");
+        } else if (isAdmin) {
+          router.replace("/admin");
         } else {
           router.replace("/dashboard");
         }
@@ -21,7 +23,7 @@ export default function Home() {
         router.replace("/login");
       }
     }
-  }, [isLoading, isAuthenticated, isSuperAdmin, router]);
+  }, [isLoading, isAuthenticated, isSuperAdmin, isAdmin, router]);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#0b1317] text-white p-6">

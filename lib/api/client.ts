@@ -116,6 +116,13 @@ export async function apiClient<T = any>(
       // Ignore JSON parse error on response
     }
 
+    // Global Tenant Suspension Interceptor
+    if (response.status === 403 && typeof errorDetail === "string" && (errorDetail.toLowerCase().includes("suspended") || errorDetail.toLowerCase().includes("restricted"))) {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tenant-suspended", { detail: errorDetail }));
+      }
+    }
+
     throw new ApiError(response.status, errorDetail, errorData);
   } catch (err: any) {
     if (err instanceof ApiError) {

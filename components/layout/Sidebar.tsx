@@ -62,9 +62,9 @@ export default function Sidebar() {
   const setMobileOpen = sidebar?.setMobileOpen ?? (() => {});
 
   const isNavActive = (href: string) => {
-    if (href === "/dashboard" && pathname === "/dashboard") return true;
-    if (href === "/admin" && pathname === "/admin") return true;
-    if (href !== "/dashboard" && href !== "/admin" && pathname.startsWith(href)) return true;
+    if (href === "/dashboard" && (pathname === "/dashboard" || pathname === "/admin")) return true;
+    if (href === "/clinic-dashboard" && (pathname === "/clinic-dashboard" || pathname === "/clinical-dashboard")) return true;
+    if (href !== "/dashboard" && href !== "/admin" && href !== "/clinic-dashboard" && pathname.startsWith(href)) return true;
     return false;
   };
 
@@ -81,13 +81,13 @@ export default function Sidebar() {
       title: "Dashboards",
       items: [
         {
-          name: "Tenant Admin Dashboard",
-          href: "/admin",
+          name: "Admin Dashboard",
+          href: "/dashboard",
           icon: ShieldCheck,
         },
         {
           name: "Clinical Workspace",
-          href: "/dashboard",
+          href: "/clinic-dashboard",
           icon: LayoutDashboard,
         },
       ],

@@ -14,20 +14,25 @@ export default function ProtectedRoute({
   children,
   requiredRole = "SUPER_ADMIN",
 }: ProtectedRouteProps) {
-  const { user, isAuthenticated, isSuperAdmin, isLoading } = useAuth();
+  const { user, isAuthenticated, isSuperAdmin, isTenantSuspended, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  const isSuspended = !isSuperAdmin && (isTenantSuspended || user?.tenant_status === "suspended" || user?.tenant_status === "inactive");
 
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
         router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
-      } else if (requiredRole === "SUPER_ADMIN" && !isSuperAdmin) {
-        // Logged in but not superadmin
-        // Allow user to stay or redirect
+      } else if (isSuspended && pathname !== "/suspended") {
+        router.replace("/suspended");
       }
     }
-  }, [isLoading, isAuthenticated, isSuperAdmin, requiredRole, router, pathname]);
+  }, [isLoading, isAuthenticated, isSuperAdmin, isSuspended, requiredRole, router, pathname]);
+
+  if (!isLoading && isAuthenticated && isSuspended && pathname !== "/suspended") {
+    return null;
+  }
 
   // Loading State: Enterprise EMR Biometric Loader
   if (isLoading) {

@@ -14,8 +14,6 @@ export default function Home() {
       if (isAuthenticated) {
         if (isSuperAdmin) {
           router.replace("/super-admin");
-        } else if (isAdmin) {
-          router.replace("/admin");
         } else {
           router.replace("/dashboard");
         }
@@ -23,7 +21,7 @@ export default function Home() {
         router.replace("/login");
       }
     }
-  }, [isLoading, isAuthenticated, isSuperAdmin, isAdmin, router]);
+  }, [isLoading, isAuthenticated, isSuperAdmin, router]);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#0b1317] text-white p-6">

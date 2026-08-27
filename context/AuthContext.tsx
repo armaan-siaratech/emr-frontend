@@ -9,6 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   isAdmin: boolean;
+  isTenantSuspended: boolean;
   isLoading: boolean;
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<AuthResponse>;
@@ -44,17 +45,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return hasExplicitAdminRole || (isTenantUser && !isSuper && !isDoctor && !isPatient);
   }, []);
 
+  const [isSuspendedTenant, setIsSuspendedTenant] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleTenantSuspended = () => {
+      setIsSuspendedTenant(true);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("tenant-suspended", handleTenantSuspended);
+      return () => window.removeEventListener("tenant-suspended", handleTenantSuspended);
+    }
+  }, []);
+
   const refreshUser = useCallback(async () => {
     try {
       setIsLoading(true);
       const res = await getCurrentUserApi();
       if (res && res.user) {
         setUser(res.user);
+        if (res.user.tenant_status === "suspended" || res.user.tenant_status === "inactive") {
+          setIsSuspendedTenant(true);
+        } else {
+          setIsSuspendedTenant(false);
+        }
       } else {
         setUser(null);
       }
-    } catch (_) {
-      setUser(null);
+    } catch (err: any) {
+      if (err?.status === 403 && typeof err?.message === "string" && (err.message.toLowerCase().includes("suspended") || err.message.toLowerCase().includes("restricted"))) {
+        setIsSuspendedTenant(true);
+      } else {
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -140,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Ignore network error on logout
     } finally {
       setUser(null);
+      setIsSuspendedTenant(false);
       setError(null);
       setIsLoading(false);
     }
@@ -150,6 +173,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAuthenticated = !!user;
   const isSuperAdmin = useMemo(() => checkUserRoles(user), [user, checkUserRoles]);
   const isAdmin = useMemo(() => checkIsAdminRole(user), [user, checkIsAdminRole]);
+  const isTenantSuspended = useMemo(() => {
+    if (isSuperAdmin) return false;
+    if (isSuspendedTenant) return true;
+    if (!user || !user.tenant_id) return false;
+    return user.tenant_status === "suspended" || user.tenant_status === "inactive";
+  }, [user, isSuperAdmin, isSuspendedTenant]);
 
   const contextValue = useMemo(
     () => ({
@@ -157,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAuthenticated,
       isSuperAdmin,
       isAdmin,
+      isTenantSuspended,
       isLoading,
       error,
       login,
@@ -166,7 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshUser,
       clearError,
     }),
-    [user, isAuthenticated, isSuperAdmin, isAdmin, isLoading, error, login, loginByPin, verify2FALogin, logout, refreshUser, clearError]
+    [user, isAuthenticated, isSuperAdmin, isAdmin, isTenantSuspended, isLoading, error, login, loginByPin, verify2FALogin, logout, refreshUser, clearError]
   );
 
   return (

@@ -14,6 +14,8 @@ export interface User {
   is_verified: boolean;
   is_totp_enabled?: boolean;
   tenant_id?: string | null;
+  tenant_status?: "active" | "suspended" | "inactive" | string | null;
+  tenant_name?: string | null;
   roles: UserRole[];
   first_name?: string;
   last_name?: string;

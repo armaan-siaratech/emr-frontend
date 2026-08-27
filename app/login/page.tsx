@@ -107,7 +107,6 @@ function LoginContent() {
     const roles: string[] = loggedUser?.roles || [];
     const isSuper = roles.some((r) => ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r));
     const hasExplicitAdminRole = roles.some((r) => ["ADMIN", "admin", "TENANT_ADMIN", "tenant_admin", "TenantAdmin", "facility_admin", "FacilityAdmin"].includes(r));
-    // Include scheduler role as a clinician capable role
     const isDoctor = roles.some((r) => ["DOCTOR", "doctor", "NURSE", "nurse", "CLINICIAN", "clinician", "Doctor", "Nurse", "SCHEDULER", "scheduler"].includes(r));
     const isPatient = roles.some((r) => ["PATIENT", "patient", "Patient"].includes(r));
     const isTenantUser = !!loggedUser?.tenant_id;
@@ -117,32 +116,34 @@ function LoginContent() {
 
     if (section === "superadmin") {
       if (!isSuper) {
-        throw new Error("Access Denied: Your account does not have Super Admin privileges. Please select your correct Account Role section.");
+        throw new Error("Access Denied: Only Super Admin accounts can log in through the Super Admin section. Please select your correct Account Role.");
       }
       return true;
     }
 
     if (section === "admin") {
-      // Admin (Facility/Tenant) section must be a tenant admin and NOT a superadmin
       if (isSuper) {
-        throw new Error("Access Denied: Super Admin accounts cannot login via the Facility/Admin section.");
+        throw new Error("Access Denied: Super Admin accounts must log in via the Super Admin section.");
       }
-      if (!isAdmin && !hasExplicitAdminRole) {
-        throw new Error("Access Denied: Your account is not a Facility / Tenant Administrator. Please select your correct Account Role section.");
+      if (!isAdmin) {
+        throw new Error("Access Denied: Only Facility / Tenant Administrator accounts can log in through this section. Please select your correct Account Role.");
       }
       return true;
     }
 
     if (section === "doctor") {
-      if (!isDoctor && !isSuper && !hasExplicitAdminRole) {
-        throw new Error("Access Denied: Your account is not authorized for the Clinician section. Please select your correct Account Role section.");
+      if (isSuper) {
+        throw new Error("Access Denied: Super Admin accounts must log in via the Super Admin section.");
+      }
+      if (!isDoctor) {
+        throw new Error("Access Denied: Only Doctor and Nurse accounts can log in through the Clinician section. Please select your correct Account Role.");
       }
       return true;
     }
 
     if (section === "patient") {
-      if (!isPatient && !isSuper) {
-        throw new Error("Access Denied: Your account is not a Patient account. Please select your correct Account Role section.");
+      if (!isPatient) {
+        throw new Error("Access Denied: Only Patient accounts can log in through the Patient section. Please select your correct Account Role.");
       }
       return true;
     }
@@ -177,20 +178,22 @@ function LoginContent() {
     }
   };
 
-  // Helper function to route users to their appropriate dashboard after successful authentication
   const navigateUserToHome = (loggedUser: any, section: "doctor" | "admin" | "superadmin" | "patient") => {
     const roles: string[] = loggedUser?.roles || [];
     const isSuper = roles.some((r) => ["SUPER_ADMIN", "superadmin", "SuperAdmin"].includes(r));
-    const hasExplicitAdminRole = roles.some((r) => ["ADMIN", "admin", "TENANT_ADMIN", "tenant_admin", "TenantAdmin", "facility_admin", "FacilityAdmin"].includes(r));
-    const isDoctor = roles.some((r) => ["DOCTOR", "doctor", "NURSE", "nurse", "CLINICIAN", "clinician", "Doctor", "Nurse"].includes(r));
-    const isPatient = roles.some((r) => ["PATIENT", "patient", "Patient"].includes(r));
-    const isTenantUser = !!loggedUser?.tenant_id;
-    const isAdminUser = hasExplicitAdminRole || (isTenantUser && !isSuper && !isDoctor && !isPatient);
+    const isTenantSuspended = !isSuper && (loggedUser?.tenant_status === "suspended" || loggedUser?.tenant_status === "inactive");
+
+    if (isTenantSuspended) {
+      router.push("/suspended");
+      return;
+    }
 
     if (section === "superadmin" || isSuper) {
       router.push("/super-admin");
-    } else if (section === "admin" || isAdminUser) {
-      router.push("/admin");
+    } else if (section === "admin") {
+      router.push("/dashboard");
+    } else if (section === "doctor") {
+      router.push("/clinic-dashboard");
     } else {
       router.push("/dashboard");
     }
@@ -239,10 +242,12 @@ function LoginContent() {
     if (!isAuthLoading && isAuthenticated && user) {
       if (isSuperAdmin) {
         router.replace("/super-admin");
+      } else if (user.tenant_status === "suspended" || user.tenant_status === "inactive") {
+        router.replace("/suspended");
       } else if (isAdmin) {
-        router.replace("/admin");
-      } else {
         router.replace("/dashboard");
+      } else {
+        router.replace("/clinic-dashboard");
       }
     }
   }, [isAuthLoading, isAuthenticated, user, isSuperAdmin, isAdmin, router]);

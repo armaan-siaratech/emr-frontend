@@ -4,64 +4,224 @@ import { useState } from "react";
 import Link from "next/link";
 import GlassCard3D from "@/components/common/GlassCard3D";
 import CreateStaffModal from "@/components/dashboard/CreateStaffModal";
+import {
+  ShieldCheck,
+  Building2,
+  Users,
+  UserPlus,
+  FileCode2,
+  Stethoscope,
+  FileText,
+  HelpCircle,
+  Bell,
+  Settings,
+  ArrowUpRight,
+  TrendingUp,
+  Activity,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Server,
+  Database,
+  BarChart3,
+  PieChart,
+  Cpu,
+  Globe,
+  Zap,
+  ArrowRight,
+  ShieldAlert,
+  SlidersHorizontal,
+  FolderKanban,
+  Check,
+  AlertCircle
+} from "lucide-react";
 
-
+// Quick Actions Configuration with Vibrant 3D Themes
 const quickActions = [
   {
     title: "Create Admin",
-    description: "Add administrator",
-    icon: "+",
+    description: "Add tenant administrator",
+    icon: UserPlus,
     href: "/super-admin/admins/create",
-    tone: "mint",
+    gradient: "from-teal-500 to-emerald-600",
+    shadow: "shadow-teal-500/25",
+    border: "border-teal-400/40",
+    cardBg: "bg-gradient-to-br from-teal-50/90 via-teal-100/40 to-emerald-50/60",
+    badge: "bg-teal-600 text-white",
   },
   {
     title: "Create Facility",
-    description: "Add healthcare facility",
-    icon: "⌂",
+    description: "Add healthcare unit / hospital",
+    icon: Building2,
     href: "/super-admin/facilities/create",
-    tone: "blue",
+    gradient: "from-sky-500 to-blue-600",
+    shadow: "shadow-sky-500/25",
+    border: "border-sky-400/40",
+    cardBg: "bg-gradient-to-br from-sky-50/90 via-sky-100/40 to-blue-50/60",
+    badge: "bg-sky-600 text-white",
   },
   {
     title: "ICD-10 Codes",
-    description: "Manage diagnosis codes",
-    icon: "✚",
+    description: "Manage diagnosis catalog",
+    icon: FileCode2,
     href: "/super-admin/icd-10",
-    tone: "orange",
+    gradient: "from-amber-500 to-orange-600",
+    shadow: "shadow-amber-500/25",
+    border: "border-amber-400/40",
+    cardBg: "bg-gradient-to-br from-amber-50/90 via-amber-100/40 to-orange-50/60",
+    badge: "bg-amber-600 text-white",
   },
   {
     title: "CPT Codes",
     description: "Manage procedure codes",
-    icon: "▣",
+    icon: Stethoscope,
     href: "/super-admin/cpt-codes",
-    tone: "purple",
+    gradient: "from-purple-500 to-indigo-600",
+    shadow: "shadow-purple-500/25",
+    border: "border-purple-400/40",
+    cardBg: "bg-gradient-to-br from-purple-50/90 via-purple-100/40 to-indigo-50/60",
+    badge: "bg-purple-600 text-white",
   },
   {
-    title: "Reports",
-    description: "View platform reports",
-    icon: "▤",
+    title: "Reports & Analytics",
+    description: "View platform throughput",
+    icon: FileText,
     href: "/super-admin/reports",
-    tone: "teal",
+    gradient: "from-emerald-500 to-teal-700",
+    shadow: "shadow-emerald-500/25",
+    border: "border-emerald-400/40",
+    cardBg: "bg-gradient-to-br from-emerald-50/90 via-teal-100/40 to-emerald-100/40",
+    badge: "bg-emerald-600 text-white",
   },
   {
     title: "Support Tickets",
     description: "Resolve support issues",
-    icon: "?",
+    icon: HelpCircle,
     href: "/super-admin/support-tickets",
-    tone: "red",
+    gradient: "from-rose-500 to-red-600",
+    shadow: "shadow-rose-500/25",
+    border: "border-rose-400/40",
+    cardBg: "bg-gradient-to-br from-rose-50/90 via-rose-100/40 to-red-50/60",
+    badge: "bg-rose-600 text-white",
   },
   {
     title: "Notifications",
-    description: "Manage notifications",
-    icon: "♢",
+    description: "Manage system broadcasts",
+    icon: Bell,
     href: "/super-admin/notifications",
-    tone: "yellow",
+    gradient: "from-indigo-500 to-purple-600",
+    shadow: "shadow-indigo-500/25",
+    border: "border-indigo-400/40",
+    cardBg: "bg-gradient-to-br from-indigo-50/90 via-indigo-100/40 to-purple-50/60",
+    badge: "bg-indigo-600 text-white",
   },
   {
-    title: "Settings",
-    description: "Platform settings",
-    icon: "⚙",
+    title: "Platform Settings",
+    description: "System config & backups",
+    icon: Settings,
     href: "/super-admin/settings",
-    tone: "gray",
+    gradient: "from-slate-600 to-slate-800",
+    shadow: "shadow-slate-600/25",
+    border: "border-slate-400/40",
+    cardBg: "bg-gradient-to-br from-slate-100/90 via-slate-200/50 to-slate-100/80",
+    badge: "bg-slate-700 text-white",
+  },
+];
+
+// Stats Data with Rich 3D Palette
+const statsData = [
+  {
+    label: "Total Admins",
+    value: "24",
+    change: "+8.2%",
+    description: "Administrator accounts",
+    icon: ShieldCheck,
+    gradient: "from-teal-600 to-teal-800 text-white",
+    cardBg: "bg-gradient-to-br from-[#f0faf7] to-[#e1f5f0] border-teal-200/80",
+    badge: "bg-teal-700/10 text-teal-800 border border-teal-300/50",
+    glow: "shadow-[0_10px_30px_rgba(15,118,110,0.18)]",
+  },
+  {
+    label: "Active Admins",
+    value: "21",
+    change: "+3",
+    description: "Currently active",
+    icon: CheckCircle2,
+    gradient: "from-sky-600 to-blue-700 text-white",
+    cardBg: "bg-gradient-to-br from-[#f0f8ff] to-[#e0f2fe] border-sky-200/80",
+    badge: "bg-sky-700/10 text-sky-800 border border-sky-300/50",
+    glow: "shadow-[0_10px_30px_rgba(2,132,199,0.18)]",
+  },
+  {
+    label: "Pending Admins",
+    value: "3",
+    change: "+1",
+    description: "Awaiting activation",
+    icon: Clock,
+    gradient: "from-amber-500 to-orange-600 text-white",
+    cardBg: "bg-gradient-to-br from-[#fffbeb] to-[#fef3c7] border-amber-200/80",
+    badge: "bg-amber-700/10 text-amber-800 border border-amber-300/50",
+    glow: "shadow-[0_10px_30px_rgba(217,119,6,0.18)]",
+  },
+  {
+    label: "Total Facilities",
+    value: "42",
+    change: "+3",
+    description: "Healthcare facilities",
+    icon: Building2,
+    gradient: "from-purple-600 to-indigo-700 text-white",
+    cardBg: "bg-gradient-to-br from-[#faf5ff] to-[#f3e8ff] border-purple-200/80",
+    badge: "bg-purple-700/10 text-purple-800 border border-purple-300/50",
+    glow: "shadow-[0_10px_30px_rgba(147,51,234,0.18)]",
+  },
+  {
+    label: "ICD-10 Codes",
+    value: "72,418",
+    change: "+124",
+    description: "Diagnosis codes",
+    icon: FileCode2,
+    gradient: "from-amber-600 to-orange-700 text-white",
+    cardBg: "bg-gradient-to-br from-[#fff7ed] to-[#ffedd5] border-orange-200/80",
+    badge: "bg-orange-700/10 text-orange-800 border border-orange-300/50",
+    glow: "shadow-[0_10px_30px_rgba(234,88,12,0.18)]",
+  },
+  {
+    label: "CPT Codes",
+    value: "10,842",
+    change: "+86",
+    description: "Procedure codes",
+    icon: Stethoscope,
+    gradient: "from-emerald-600 to-teal-700 text-white",
+    cardBg: "bg-gradient-to-br from-[#ecfdf5] to-[#d1fae5] border-emerald-200/80",
+    badge: "bg-emerald-700/10 text-emerald-800 border border-emerald-300/50",
+    glow: "shadow-[0_10px_30px_rgba(16,185,129,0.18)]",
+  },
+  {
+    label: "Open Tickets",
+    value: "18",
+    change: "-12%",
+    description: "Support tickets",
+    icon: HelpCircle,
+    gradient: "from-rose-600 to-red-700 text-white",
+    cardBg: "bg-gradient-to-br from-[#fff1f2] to-[#ffe4e6] border-rose-200/80",
+    badge: "bg-rose-700/10 text-rose-800 border border-rose-300/50",
+    glow: "shadow-[0_10px_30px_rgba(225,29,72,0.18)]",
+  },
+  {
+    label: "Critical Tickets",
+    value: "5",
+    change: "-2",
+    description: "Need immediate action",
+    icon: AlertTriangle,
+    gradient: "from-red-600 to-rose-800 text-white",
+    cardBg: "bg-gradient-to-br from-[#fef2f2] to-[#fecaca] border-red-300/80",
+    badge: "bg-red-700/15 text-red-900 border border-red-300/50",
+    glow: "shadow-[0_10px_30px_rgba(220,38,38,0.22)]",
   },
 ];
 
@@ -73,6 +233,7 @@ const admins = [
     role: "Administrator",
     status: "Active",
     initials: "JS",
+    color: "bg-teal-600 text-white shadow-teal-600/30",
   },
   {
     name: "Sarah Williams",
@@ -81,6 +242,7 @@ const admins = [
     role: "Administrator",
     status: "Active",
     initials: "SW",
+    color: "bg-sky-600 text-white shadow-sky-600/30",
   },
   {
     name: "Michael Brown",
@@ -89,6 +251,7 @@ const admins = [
     role: "Administrator",
     status: "Pending",
     initials: "MB",
+    color: "bg-amber-600 text-white shadow-amber-600/30",
   },
   {
     name: "Emily Davis",
@@ -97,6 +260,7 @@ const admins = [
     role: "Administrator",
     status: "Active",
     initials: "ED",
+    color: "bg-purple-600 text-white shadow-purple-600/30",
   },
 ];
 
@@ -107,6 +271,7 @@ const facilities = [
     admins: 4,
     users: 128,
     status: "Active",
+    code: "CMC-DEL",
   },
   {
     name: "Green Valley Hospital",
@@ -114,6 +279,7 @@ const facilities = [
     admins: 3,
     users: 96,
     status: "Active",
+    code: "GVH-BOM",
   },
   {
     name: "City Care Clinic",
@@ -121,6 +287,7 @@ const facilities = [
     admins: 2,
     users: 74,
     status: "Active",
+    code: "CCC-BLR",
   },
   {
     name: "Sunrise Healthcare",
@@ -128,6 +295,7 @@ const facilities = [
     admins: 2,
     users: 61,
     status: "Pending",
+    code: "SHC-PUN",
   },
 ];
 
@@ -167,36 +335,36 @@ const activities = [
     title: "New admin created",
     description: "John Smith was added to Central Medical Center",
     time: "09:42 AM",
-    icon: "+",
-    tone: "mint",
+    icon: UserPlus,
+    gradient: "from-teal-500 to-emerald-600 text-white",
   },
   {
     title: "ICD-10 database updated",
     description: "124 diagnosis codes were imported",
     time: "08:30 AM",
-    icon: "✓",
-    tone: "blue",
+    icon: FileCode2,
+    gradient: "from-sky-500 to-blue-600 text-white",
   },
   {
     title: "Support ticket opened",
     description: "Unable to create patient",
     time: "08:12 AM",
-    icon: "!",
-    tone: "orange",
+    icon: AlertTriangle,
+    gradient: "from-rose-500 to-red-600 text-white",
   },
   {
     title: "CPT database synchronized",
     description: "86 procedure codes were updated",
     time: "Yesterday",
-    icon: "↗",
-    tone: "purple",
+    icon: Stethoscope,
+    gradient: "from-purple-500 to-indigo-600 text-white",
   },
   {
     title: "Facility account activated",
     description: "Green Valley Hospital is now active",
     time: "Yesterday",
-    icon: "⌂",
-    tone: "teal",
+    icon: Building2,
+    gradient: "from-emerald-500 to-teal-700 text-white",
   },
 ];
 
@@ -206,251 +374,249 @@ const codeUpdates = [
     updated: "124 codes",
     date: "Today",
     percentage: 92,
+    color: "bg-gradient-to-r from-teal-500 to-emerald-600",
   },
   {
     name: "CPT",
     updated: "86 codes",
     date: "Today",
     percentage: 76,
+    color: "bg-gradient-to-r from-sky-500 to-blue-600",
   },
   {
     name: "HCPCS",
     updated: "42 codes",
     date: "Yesterday",
     percentage: 58,
+    color: "bg-gradient-to-r from-purple-500 to-indigo-600",
   },
 ];
 
 export default function SuperAdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"admins" | "facilities">("admins");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   return (
-    <div className="w-full space-y-6 pb-10">
-      {/* HERO BANNER 3D */}
-      <GlassCard3D depth={15}>
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-[#10b981]" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0f766e]">
-                MediCare HMS Platform Control
+    <div className="mx-auto max-w-[1700px] space-y-7 p-4 sm:p-6 font-sans">
+      
+      {/* ==================== 1. 3D GLASS HERO COMMAND CENTER ==================== */}
+      <div className="relative overflow-hidden rounded-3xl border-2 border-teal-500/30 bg-gradient-to-r from-[#0a2320] via-[#0d342f] to-[#12423c] p-6 sm:p-8 text-white shadow-[0_20px_50px_rgba(15,118,110,0.35)] backdrop-blur-3xl">
+        {/* Ambient 3D Glow Orbs */}
+        <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-teal-400/20 blur-[90px] pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-sky-500/20 blur-[100px] pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              <span className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                MediCare HMS • SuperAdmin Command Center
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black text-[#0f2d28] tracking-tight">
-              Super Admin Management Hub
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-3">
+              <ShieldCheck className="h-8 w-8 text-teal-400" />
+              <span>Platform Administration Hub</span>
             </h1>
 
-            <p className="mt-1 text-xs font-semibold text-[#54736b]">
-              Monitor healthcare platform metrics, manage facilities, and ICD-10/CPT coding.
+            <p className="text-xs sm:text-sm text-teal-100/80 font-medium max-w-2xl">
+              Monitor multi-tenant healthcare statistics, configure hospital facilities, manage ICD-10 / CPT coding catalogs, and manage administrative privileges in real-time.
             </p>
           </div>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="btn-primary self-start sm:self-auto"
-          >
-            <span className="text-base font-bold">+</span>
-            <span>New Admin Account</span>
-          </button>
-        </div>
-      </GlassCard3D>
+          {/* Action Toolbar */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="h-11 px-4 rounded-2xl border border-teal-400/40 bg-white/10 hover:bg-white/20 text-xs font-black text-white backdrop-blur-md transition-all flex items-center gap-2.5 shadow-lg active:scale-95 cursor-pointer"
+            >
+              <RefreshCw className={`h-4 w-4 text-teal-300 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span>Refresh Status</span>
+            </button>
 
-      {/* 3D Translucent Glass Staff Modal */}
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="h-11 px-5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-xs font-black text-white shadow-[0_10px_25px_rgba(16,185,129,0.4)] border border-emerald-300/40 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <Plus className="h-4.5 w-4.5 stroke-[3]" />
+              <span>+ New Admin Account</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Integration */}
       <CreateStaffModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
-      {/* QUICK ACTIONS */}
-      <section className="mb-6">
-        <div className="mb-3">
-          <h2 className="text-base font-bold text-[#0f2d28]">Quick Platform Actions</h2>
-          <p className="text-xs text-[#54736b] font-semibold">
-            Frequently used administrative controls
-          </p>
+
+      {/* ==================== 2. QUICK ACTIONS (3D COLORED ELEVATED CARDS) ==================== */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-amber-500" />
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-700">
+              Quick Administrative Controls
+            </h2>
+          </div>
+          <span className="text-xs font-extrabold text-teal-700 bg-teal-50 border border-teal-200/70 px-3 py-1 rounded-xl">
+            8 Controls Ready
+          </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {quickActions.map((action) => (
-            <QuickAction
-              key={action.title}
-              {...action}
-            />
-          ))}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <Link
+                key={action.title}
+                href={action.href}
+                className={`group relative overflow-hidden rounded-2xl border-2 ${action.border} ${action.cardBg} p-4 shadow-md ${action.shadow} transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl flex items-center justify-between active:scale-98`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${action.gradient} flex items-center justify-center font-bold text-white shadow-lg shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black tracking-tight text-slate-800 truncate group-hover:text-teal-800 transition-colors">
+                      {action.title}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-semibold truncate mt-0.5">
+                      {action.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-7 w-7 rounded-xl bg-white/80 border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-teal-700 group-hover:border-teal-300 group-hover:translate-x-1 transition-all shrink-0 ml-1">
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
 
-      {/* =========================================================
-          PLATFORM OVERVIEW
-      ========================================================= */}
-
-      <section className="mb-5">
-
-        <div className="mb-3">
-
-          <h2 className="text-[15px] font-semibold text-[#263833]">
-            Platform overview
-          </h2>
-
-          <p className="mt-0.5 text-[10px] text-[#98a49f]">
-            Current healthcare platform statistics
-          </p>
-
+      {/* ==================== 3. 3D PLATFORM METRICS STAT CARDS ==================== */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-teal-600" />
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-700">
+              Platform Metrics & Health Overview
+            </h2>
+          </div>
+          <span className="text-xs font-extrabold text-slate-500">Live Telemetry</span>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {statsData.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                className={`rounded-2xl border-2 p-4 ${stat.cardBg} ${stat.glow} transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl relative overflow-hidden`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
+                    {stat.label}
+                  </p>
+                  <div className={`h-10 w-10 rounded-2xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center font-bold shadow-md shrink-0`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
 
-          <StatCard
-            label="Total Admins"
-            value="24"
-            change="+8.2%"
-            description="Administrator accounts"
-            icon="♙"
-            tone="mint"
-          />
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+                    {stat.value}
+                  </span>
+                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${stat.badge}`}>
+                    <ArrowUpRight className="h-3 w-3" />
+                    {stat.change}
+                  </span>
+                </div>
 
-          <StatCard
-            label="Active Admins"
-            value="21"
-            change="+3"
-            description="Currently active"
-            icon="✓"
-            tone="blue"
-          />
-
-          <StatCard
-            label="Pending Admins"
-            value="3"
-            change="+1"
-            description="Awaiting activation"
-            icon="◷"
-            tone="orange"
-          />
-
-          <StatCard
-            label="Total Facilities"
-            value="42"
-            change="+3"
-            description="Healthcare facilities"
-            icon="⌂"
-            tone="purple"
-          />
-
-          <StatCard
-            label="ICD-10 Codes"
-            value="72,418"
-            change="+124"
-            description="Diagnosis codes"
-            icon="✚"
-            tone="orange"
-          />
-
-          <StatCard
-            label="CPT Codes"
-            value="10,842"
-            change="+86"
-            description="Procedure codes"
-            icon="▣"
-            tone="mint"
-          />
-
-          <StatCard
-            label="Open Tickets"
-            value="18"
-            change="-12%"
-            description="Support tickets"
-            icon="?"
-            tone="red"
-          />
-
-          <StatCard
-            label="Critical Tickets"
-            value="5"
-            change="-2"
-            description="Need immediate attention"
-            icon="!"
-            tone="red"
-          />
-
+                <p className="mt-2 text-[10px] text-slate-500 font-semibold truncate">
+                  {stat.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
-
       </section>
 
 
-      {/* =========================================================
-          MAIN GRID
-      ========================================================= */}
-
-      <div className="mb-5 grid grid-cols-[1.35fr_1fr] gap-5">
-
-        {/* PLATFORM ACTIVITY */}
-
-        <section className="card card-hover overflow-hidden">
-
-          <SectionHeader
-            title="Platform activity"
-            subtitle="Activity across the healthcare platform"
-            action="View reports"
-            href="/super-admin/reports"
-          />
-
-          <div className="p-6">
-
-            <div className="mb-5 grid grid-cols-3 gap-3">
-
-              <MiniMetric
-                label="Today's activity"
-                value="842"
-                change="+14.6%"
-              />
-
-              <MiniMetric
-                label="Active users"
-                value="319"
-                change="+8.4%"
-              />
-
-              <MiniMetric
-                label="API requests"
-                value="24.8K"
-                change="+6.2%"
-              />
-
+      {/* ==================== 4. MAIN ANALYTICS & SUPPORT GRID ==================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        {/* Left 7 Cols: Platform Activity Chart */}
+        <div className="lg:col-span-7 rounded-3xl border-2 border-teal-200/80 bg-gradient-to-b from-white via-teal-50/20 to-teal-50/50 p-6 shadow-[0_15px_40px_rgba(15,118,110,0.08)] space-y-4 flex flex-col justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4 border-teal-100">
+            <div>
+              <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-teal-600" />
+                <span>Platform System Throughput</span>
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">Real-time daily activity & API request volume</p>
             </div>
 
-            <div className="relative h-[190px]">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-black">
+                +14.6% Growth
+              </span>
+            </div>
+          </div>
 
-              <div className="absolute inset-0 flex flex-col justify-between">
+          {/* Mini Metrics Row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50 to-emerald-50 p-3.5 shadow-xs">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Today&apos;s Actions</p>
+              <p className="text-xl font-black text-slate-800 mt-1">842</p>
+              <span className="text-[10px] font-extrabold text-emerald-600">+14.6% vs yesterday</span>
+            </div>
 
-                {[1, 2, 3, 4, 5].map((item) => (
+            <div className="rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-50 to-blue-50 p-3.5 shadow-xs">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Active Staff</p>
+              <p className="text-xl font-black text-slate-800 mt-1">319</p>
+              <span className="text-[10px] font-extrabold text-sky-600">+8.4% online</span>
+            </div>
+
+            <div className="rounded-2xl border border-purple-200/70 bg-gradient-to-br from-purple-50 to-indigo-50 p-3.5 shadow-xs">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">API Calls</p>
+              <p className="text-xl font-black text-slate-800 mt-1">24.8K</p>
+              <span className="text-[10px] font-extrabold text-purple-600">+6.2% load</span>
+            </div>
+          </div>
+
+          {/* 3D Visual Bar Chart */}
+          <div className="h-48 w-full relative pt-4 flex flex-col justify-end">
+            <div className="flex items-end justify-between gap-2 h-36 px-2">
+              {[42, 58, 51, 76, 65, 89, 73, 106, 91, 118, 102, 135].map((val, idx) => (
+                <div key={idx} className="group flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
                   <div
-                    key={item}
-                    className="border-t border-[#eef2f0]"
-                  />
-                ))}
-
-              </div>
-
-              <div className="absolute inset-0 flex items-end gap-3 px-2">
-
-                {[42, 58, 51, 76, 65, 89, 73, 106, 91, 118, 102, 135].map(
-                  (height, index) => (
-                    <div
-                      key={index}
-                      className="group flex h-full flex-1 items-end"
-                    >
-                      <div
-                        style={{ height: `${height}px` }}
-                        className="w-full rounded-t-[6px] bg-gradient-to-t from-[#c8e9e3] to-[#e8f6f3] transition-all duration-300 group-hover:from-[#0f766e] group-hover:to-[#62c4b8]"
-                      />
+                    style={{ height: `${(val / 140) * 100}%` }}
+                    className="w-full rounded-t-xl bg-gradient-to-t from-teal-600 via-teal-500 to-emerald-400 group-hover:from-teal-700 group-hover:to-emerald-300 transition-all duration-300 shadow-md group-hover:shadow-teal-500/40 relative"
+                  >
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] font-bold px-2 py-0.5 rounded-md pointer-events-none z-10 whitespace-nowrap">
+                      {val} actions
                     </div>
-                  )
-                )}
-
-              </div>
-
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="mt-3 grid grid-cols-7 text-center text-[9px] text-[#98a49f]">
+            <div className="grid grid-cols-7 text-center text-[10px] font-extrabold text-slate-500 pt-2 border-t border-teal-200/60 mt-2">
               <span>Mon</span>
               <span>Tue</span>
               <span>Wed</span>
@@ -459,783 +625,320 @@ export default function SuperAdminDashboard() {
               <span>Sat</span>
               <span>Sun</span>
             </div>
+          </div>
+        </div>
 
+
+        {/* Right 5 Cols: Support Tickets Queue */}
+        <div className="lg:col-span-5 rounded-3xl border-2 border-rose-200/80 bg-gradient-to-b from-white via-rose-50/20 to-rose-50/40 p-6 shadow-[0_15px_40px_rgba(225,29,72,0.08)] space-y-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b pb-4 border-rose-100">
+            <div>
+              <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                <HelpCircle className="h-5 w-5 text-rose-600" />
+                <span>Support Tickets Queue</span>
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">Issues needing SuperAdmin review</p>
+            </div>
+
+            <Link
+              href="/super-admin/support-tickets"
+              className="text-xs font-black text-rose-700 hover:text-rose-900 transition-colors flex items-center gap-1"
+            >
+              <span>View all</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
 
-        </section>
-
-
-        {/* SUPPORT TICKETS */}
-
-        <section className="card card-hover overflow-hidden">
-
-          <SectionHeader
-            title="Support tickets"
-            subtitle="Issues requiring attention"
-            action="View all"
-            href="/super-admin/support-tickets"
-          />
-
-          <div>
-
-            {tickets.map((ticket, index) => (
+          <div className="space-y-3">
+            {tickets.map((tkt) => (
               <div
-                key={ticket.id}
-                className={`flex items-center gap-3 px-6 py-4 transition hover:bg-[#f7fbfa] ${
-                  index !== tickets.length - 1
-                    ? "border-b border-[#eef2f0]"
-                    : ""
-                }`}
+                key={tkt.id}
+                className="p-3.5 rounded-2xl border border-rose-200/70 bg-white hover:bg-rose-50/50 transition-all shadow-xs flex items-center justify-between gap-3"
               >
-
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-[11px] font-bold ${
-                    ticket.priority === "Critical"
-                      ? "bg-[#fdebea] text-[#d45249]"
-                      : ticket.priority === "High"
-                        ? "bg-[#fff0e6] text-[#c76c2e]"
-                        : ticket.priority === "Medium"
-                          ? "bg-[#fff7dc] text-[#a97817]"
-                          : "bg-[#e8f5f0] text-[#278260]"
-                  }`}
-                >
-                  !
-                </div>
-
-                <div className="min-w-0 flex-1">
-
-                  <p className="truncate text-[11px] font-semibold text-[#263833]">
-                    {ticket.title}
-                  </p>
-
-                  <p className="mt-0.5 truncate text-[9px] text-[#98a49f]">
-                    {ticket.id} · {ticket.facility}
-                  </p>
-
-                  <p className="mt-0.5 text-[8px] text-[#b0bab6]">
-                    {ticket.time}
-                  </p>
-
-                </div>
-
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[8px] font-semibold ${
-                    ticket.priority === "Critical"
-                      ? "bg-[#fdebea] text-[#d45249]"
-                      : ticket.priority === "High"
-                        ? "bg-[#fff0e6] text-[#c76c2e]"
-                        : ticket.priority === "Medium"
-                          ? "bg-[#fff7dc] text-[#a97817]"
-                          : "bg-[#e8f5f0] text-[#278260]"
-                  }`}
-                >
-                  {ticket.priority}
-                </span>
-
-              </div>
-            ))}
-
-          </div>
-
-          <div className="grid grid-cols-3 border-t border-[#eef2f0] bg-[#fafcfb]">
-
-            <TicketSummary
-              label="Open"
-              value="18"
-            />
-
-            <TicketSummary
-              label="In Progress"
-              value="9"
-            />
-
-            <TicketSummary
-              label="Resolved"
-              value="126"
-            />
-
-          </div>
-
-        </section>
-
-      </div>
-
-
-      {/* =========================================================
-          ADMIN + FACILITY
-      ========================================================= */}
-
-      <div className="mb-5 grid grid-cols-[1.15fr_1fr] gap-5">
-
-        {/* ADMINS */}
-
-        <section className="card card-hover overflow-hidden">
-
-          <SectionHeader
-            title="Administrator overview"
-            subtitle="Recently created administrator accounts"
-            action="View all"
-            href="/super-admin/admins"
-          />
-
-          <div>
-
-            {admins.map((admin, index) => (
-              <div
-                key={admin.email}
-                className={`flex items-center gap-3 px-6 py-3.5 transition hover:bg-[#f7fbfa] ${
-                  index !== admins.length - 1
-                    ? "border-b border-[#eef2f0]"
-                    : ""
-                }`}
-              >
-
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e2f3ef] text-[10px] font-bold text-[#0f766e]">
-                  {admin.initials}
-                </div>
-
-                <div className="min-w-0 flex-1">
-
-                  <p className="truncate text-[11px] font-semibold text-[#263833]">
-                    {admin.name}
-                  </p>
-
-                  <p className="truncate text-[9px] text-[#98a49f]">
-                    {admin.email}
-                  </p>
-
-                  <p className="truncate text-[9px] text-[#b0bab6]">
-                    {admin.facility}
-                  </p>
-
-                </div>
-
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[8px] font-semibold ${
-                    admin.status === "Active"
-                      ? "bg-[#e7f6ef] text-[#278260]"
-                      : "bg-[#fff3e5] text-[#bd7730]"
-                  }`}
-                >
-                  {admin.status}
-                </span>
-
-              </div>
-            ))}
-
-          </div>
-
-        </section>
-
-
-        {/* FACILITIES */}
-
-        <section className="card card-hover overflow-hidden">
-
-          <SectionHeader
-            title="Facility overview"
-            subtitle="Healthcare facilities on platform"
-            action="View all"
-            href="/super-admin/facilities"
-          />
-
-          <div>
-
-            {facilities.map((facility, index) => (
-              <div
-                key={facility.name}
-                className={`flex items-center gap-3 px-6 py-3.5 ${
-                  index !== facilities.length - 1
-                    ? "border-b border-[#eef2f0]"
-                    : ""
-                }`}
-              >
-
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#edf5f8] text-[14px] text-[#557e9d]">
-                  ⌂
-                </div>
-
-                <div className="min-w-0 flex-1">
-
-                  <p className="truncate text-[11px] font-semibold text-[#263833]">
-                    {facility.name}
-                  </p>
-
-                  <p className="text-[9px] text-[#98a49f]">
-                    {facility.location} · {facility.admins} admins ·{" "}
-                    {facility.users} users
-                  </p>
-
-                </div>
-
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[8px] font-semibold ${
-                    facility.status === "Active"
-                      ? "bg-[#e7f6ef] text-[#278260]"
-                      : "bg-[#fff3e5] text-[#bd7730]"
-                  }`}
-                >
-                  {facility.status}
-                </span>
-
-              </div>
-            ))}
-
-          </div>
-
-        </section>
-
-      </div>
-
-
-      {/* =========================================================
-          DATABASE + ACTIVITY + SYSTEM HEALTH
-      ========================================================= */}
-
-      <div className="mb-5 grid grid-cols-[1fr_1.15fr_0.9fr] gap-5">
-
-        {/* CODE DATABASE */}
-
-        <section className="card card-hover overflow-hidden">
-
-          <SectionHeader
-            title="Code database"
-            subtitle="Recent coding database updates"
-            action="Manage"
-            href="/super-admin/icd10"
-          />
-
-          <div className="p-5">
-
-            {codeUpdates.map((code, index) => (
-              <div
-                key={code.name}
-                className={index !== codeUpdates.length - 1 ? "mb-5" : ""}
-              >
-
-                <div className="mb-2 flex items-center justify-between">
-
-                  <div>
-                    <p className="text-[11px] font-semibold text-[#263833]">
-                      {code.name}
-                    </p>
-
-                    <p className="mt-0.5 text-[9px] text-[#98a49f]">
-                      {code.updated} updated · {code.date}
-                    </p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 shadow-xs ${
+                    tkt.priority === "Critical"
+                      ? "bg-rose-600 text-white"
+                      : tkt.priority === "High"
+                      ? "bg-amber-500 text-white"
+                      : tkt.priority === "Medium"
+                      ? "bg-orange-500 text-white"
+                      : "bg-teal-600 text-white"
+                  }`}>
+                    !
                   </div>
 
-                  <span className="text-[10px] font-semibold text-[#0f766e]">
-                    {code.percentage}%
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-slate-800 truncate">{tkt.title}</p>
+                    <p className="text-[10px] text-slate-500 font-semibold truncate mt-0.5">
+                      {tkt.id} • {tkt.facility}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className={`inline-block px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider ${
+                    tkt.priority === "Critical"
+                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                      : tkt.priority === "High"
+                      ? "bg-amber-100 text-amber-800 border border-amber-300"
+                      : "bg-teal-100 text-teal-800 border border-teal-300"
+                  }`}>
+                    {tkt.priority}
                   </span>
-
+                  <p className="text-[9px] text-slate-400 font-bold mt-1">{tkt.time}</p>
                 </div>
-
-                <div className="h-1.5 overflow-hidden rounded-full bg-[#edf2f0]">
-
-                  <div
-                    style={{ width: `${code.percentage}%` }}
-                    className="h-full rounded-full bg-[#0f766e]"
-                  />
-
-                </div>
-
               </div>
             ))}
-
           </div>
 
-        </section>
+          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-rose-100 text-center">
+            <div className="p-2 rounded-xl bg-white border border-slate-200">
+              <p className="text-base font-black text-slate-800">18</p>
+              <p className="text-[9px] font-bold text-slate-500 uppercase">Open</p>
+            </div>
+            <div className="p-2 rounded-xl bg-white border border-slate-200">
+              <p className="text-base font-black text-slate-800">9</p>
+              <p className="text-[9px] font-bold text-slate-500 uppercase">In Progress</p>
+            </div>
+            <div className="p-2 rounded-xl bg-white border border-slate-200">
+              <p className="text-base font-black text-emerald-700">126</p>
+              <p className="text-[9px] font-bold text-slate-500 uppercase">Resolved</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
 
 
-        {/* SYSTEM ACTIVITY */}
-
-        <section className="card card-hover overflow-hidden">
-
-          <SectionHeader
-            title="Recent system activity"
-            subtitle="Latest platform events"
-            action="View activity"
-            href="/super-admin/reports"
-          />
-
-          <div>
-
-            {activities.map((activity, index) => (
-              <div
-                key={activity.title}
-                className={`flex gap-3 px-5 py-3.5 ${
-                  index !== activities.length - 1
-                    ? "border-b border-[#eef2f0]"
-                    : ""
+      {/* ==================== 5. ADMINS & FACILITIES TABBED OVERVIEW ==================== */}
+      <div className="rounded-3xl border-2 border-teal-200/80 bg-white p-6 shadow-[0_15px_40px_rgba(15,118,110,0.06)] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="flex rounded-2xl border border-slate-200 bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("admins")}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  activeTab === "admins"
+                    ? "bg-teal-700 text-white shadow-md"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
+                Tenant Admins (24)
+              </button>
 
-                <div
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[10px] font-bold ${
-                    activity.tone === "mint"
-                      ? "bg-[#e5f5f1] text-[#0f766e]"
-                      : activity.tone === "blue"
-                        ? "bg-[#edf4f8] text-[#557e9d]"
-                        : activity.tone === "orange"
-                          ? "bg-[#fff3e5] text-[#bd7730]"
-                          : activity.tone === "purple"
-                            ? "bg-[#f1eef8] text-[#7967a5]"
-                            : "bg-[#e8f5f0] text-[#0f766e]"
-                  }`}
-                >
-                  {activity.icon}
-                </div>
-
-                <div className="min-w-0 flex-1">
-
-                  <div className="flex justify-between gap-2">
-
-                    <p className="truncate text-[10px] font-semibold text-[#263833]">
-                      {activity.title}
-                    </p>
-
-                    <span className="shrink-0 text-[8px] text-[#a0aba7]">
-                      {activity.time}
-                    </span>
-
-                  </div>
-
-                  <p className="mt-0.5 truncate text-[9px] text-[#98a49f]">
-                    {activity.description}
-                  </p>
-
-                </div>
-
-              </div>
-            ))}
-
+              <button
+                type="button"
+                onClick={() => setActiveTab("facilities")}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  activeTab === "facilities"
+                    ? "bg-teal-700 text-white shadow-md"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Facilities (42)
+              </button>
+            </div>
           </div>
 
-        </section>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter records..."
+              className="h-10 w-full sm:w-64 rounded-2xl border border-slate-300 bg-slate-50 pl-9 pr-4 text-xs font-semibold outline-none focus:border-teal-600 focus:bg-white transition-all"
+            />
+          </div>
+        </div>
 
+        {/* Tab 1: Tenant Admins Table */}
+        {activeTab === "admins" && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                  <th className="py-3 px-3">Admin User</th>
+                  <th className="py-3 px-3">Email Address</th>
+                  <th className="py-3 px-3">Assigned Facility</th>
+                  <th className="py-3 px-3">Role</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-semibold">
+                {admins.map((adm) => (
+                  <tr key={adm.email} className="hover:bg-teal-50/40 transition-colors">
+                    <td className="py-3.5 px-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-xl ${adm.color} flex items-center justify-center font-black text-xs shadow-xs`}>
+                          {adm.initials}
+                        </div>
+                        <span className="font-extrabold text-slate-900">{adm.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-3 text-slate-600 font-mono text-[11px]">{adm.email}</td>
+                    <td className="py-3.5 px-3 text-slate-800 font-bold">{adm.facility}</td>
+                    <td className="py-3.5 px-3">
+                      <span className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 text-[10px] font-black border border-teal-200">
+                        {adm.role}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                        adm.status === "Active"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${adm.status === "Active" ? "bg-emerald-600" : "bg-amber-600"}`} />
+                        {adm.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3 text-right">
+                      <Link
+                        href={`/super-admin/admins`}
+                        className="px-3 py-1.5 rounded-xl border border-teal-300 bg-teal-50 hover:bg-teal-700 hover:text-white text-[10px] font-extrabold text-teal-800 transition-all"
+                      >
+                        Manage
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {/* SYSTEM HEALTH */}
-
-        <section className="card card-hover overflow-hidden">
-
-          <SectionHeader
-            title="System health"
-            subtitle="Platform service status"
-            action="Details"
-            href="/super-admin/settings"
-          />
-
-          <div className="p-5">
-
-            <div className="mb-5 rounded-xl bg-[#eaf7f2] p-4">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#2d906d] shadow-sm">
-                  ✓
+        {/* Tab 2: Facilities Grid */}
+        {activeTab === "facilities" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {facilities.map((fac) => (
+              <div key={fac.name} className="p-4 rounded-2xl border-2 border-sky-200/80 bg-gradient-to-br from-sky-50/50 to-blue-50/30 hover:shadow-lg transition-all space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="h-9 w-9 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold shadow-sm">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black ${
+                    fac.status === "Active" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                  }`}>
+                    {fac.status}
+                  </span>
                 </div>
 
                 <div>
-
-                  <p className="text-[12px] font-semibold text-[#276e58]">
-                    All systems operational
-                  </p>
-
-                  <p className="mt-0.5 text-[9px] text-[#679183]">
-                    No major incidents detected
-                  </p>
-
+                  <p className="font-extrabold text-slate-900 text-sm">{fac.name}</p>
+                  <p className="text-[10px] text-slate-500 font-bold">{fac.location} • Code: {fac.code}</p>
                 </div>
 
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 pt-2 border-t border-sky-100">
+                  <span>{fac.admins} Admins</span>
+                  <span>{fac.users} Users</span>
+                </div>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
 
+
+      {/* ==================== 6. SYSTEM HEALTH & CODING DATABASE 3D CARDS ==================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        {/* Left 6 Cols: Coding Catalog Updates */}
+        <div className="lg:col-span-6 rounded-3xl border-2 border-amber-200/80 bg-gradient-to-b from-white via-amber-50/20 to-orange-50/30 p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b pb-4 border-amber-100">
+            <div>
+              <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                <FileCode2 className="h-5 w-5 text-amber-600" />
+                <span>Clinical Coding Databases</span>
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">ICD-10, CPT & HCPCS medical terminology status</p>
             </div>
 
-            <HealthRow
-              label="API Services"
-              value="99.99%"
-            />
-
-            <HealthRow
-              label="Database"
-              value="99.98%"
-            />
-
-            <HealthRow
-              label="Notifications"
-              value="99.95%"
-            />
-
-            <HealthRow
-              label="File Storage"
-              value="99.97%"
-            />
-
-            <div className="mt-5 border-t border-[#eef2f0] pt-4">
-
-              <div className="flex items-center justify-between">
-
-                <span className="text-[9px] text-[#98a49f]">
-                  Platform uptime
-                </span>
-
-                <span className="text-[12px] font-semibold text-[#278260]">
-                  99.9%
-                </span>
-
-              </div>
-
-            </div>
-
+            <Link
+              href="/super-admin/icd-10"
+              className="text-xs font-black text-amber-700 hover:text-amber-900 transition-colors flex items-center gap-1"
+            >
+              <span>Manage DB</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
 
-        </section>
-
-      </div>
-
-
-      {/* =========================================================
-          BOTTOM SUMMARY
-      ========================================================= */}
-
-      <div className="grid grid-cols-4 gap-4">
-
-        <SummaryCard
-          title="Today's activity"
-          value="842"
-          description="Platform actions"
-          icon="↗"
-        />
-
-        <SummaryCard
-          title="Active users"
-          value="319"
-          description="Currently online"
-          icon="♙"
-        />
-
-        <SummaryCard
-          title="Notifications sent"
-          value="1,284"
-          description="Today"
-          icon="◇"
-        />
-
-        <SummaryCard
-          title="Platform uptime"
-          value="99.9%"
-          description="Current month"
-          icon="✓"
-        />
-
-      </div>
-
-    </div>
-  );
-}
-
-
-/* ===============================================================
-   QUICK ACTION
-=============================================================== */
-
-function QuickAction({
-  title,
-  description,
-  icon,
-  href,
-  tone,
-}: {
-  title: string;
-  description: string;
-  icon: string;
-  href: string;
-  tone: string;
-}) {
-  const toneClasses: Record<string, string> = {
-    mint: "bg-[#e5f5f1] text-[#0f766e]",
-    blue: "bg-[#edf4f8] text-[#557e9d]",
-    orange: "bg-[#fff0df] text-[#bd7730]",
-    purple: "bg-[#f0ecf7] text-[#7967a5]",
-    teal: "bg-[#e4f4f1] text-[#16776d]",
-    red: "bg-[#fdebea] text-[#d45d55]",
-    yellow: "bg-[#fff7df] text-[#a97817]",
-    gray: "bg-[#eef2f0] text-[#65736f]",
-  };
-
-  return (
-    <a
-      href={href}
-      className="card card-hover group flex items-center gap-3 p-4"
-    >
-
-      <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-[15px] font-bold transition-transform duration-300 group-hover:scale-110 ${toneClasses[tone]}`}
-      >
-        {icon}
-      </div>
-
-      <div className="min-w-0 flex-1">
-
-        <p className="text-[11px] font-semibold text-[#263833]">
-          {title}
-        </p>
-
-        <p className="mt-0.5 truncate text-[9px] text-[#98a49f]">
-          {description}
-        </p>
-
-      </div>
-
-      <span className="text-[13px] text-[#b1bbb7] transition group-hover:translate-x-1 group-hover:text-[#0f766e]">
-        →
-      </span>
-
-    </a>
-  );
-}
-
-
-/* ===============================================================
-   STAT CARD
-=============================================================== */
-
-function StatCard({
-  label,
-  value,
-  change,
-  description,
-  icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  change: string;
-  description: string;
-  icon: string;
-  tone: string;
-}) {
-  const toneClasses: Record<string, string> = {
-    mint: "bg-[#e5f5f1] text-[#0f766e]",
-    blue: "bg-[#edf4f8] text-[#557e9d]",
-    orange: "bg-[#fff0df] text-[#bd7730]",
-    purple: "bg-[#f0ecf7] text-[#7967a5]",
-    red: "bg-[#fdebea] text-[#d45d55]",
-  };
-
-  return (
-    <div className="card card-hover p-5">
-
-      <div className="flex items-start justify-between">
-
-        <p className="text-[9px] font-semibold uppercase tracking-[0.11em] text-[#8b9893]">
-          {label}
-        </p>
-
-        <span
-          className={`flex h-8 w-8 items-center justify-center rounded-[9px] text-[13px] ${toneClasses[tone]}`}
-        >
-          {icon}
-        </span>
-
-      </div>
-
-      <div className="mt-5 flex items-end gap-2">
-
-        <span className="text-[25px] font-semibold tracking-[-0.04em] text-[#172522]">
-          {value}
-        </span>
-
-        <span className="mb-1 rounded-full bg-[#edf8f4] px-2 py-0.5 text-[8px] font-semibold text-[#2d906d]">
-          {change}
-        </span>
-
-      </div>
-
-      <p className="mt-1 text-[10px] text-[#9aa5a1]">
-        {description}
-      </p>
-
-    </div>
-  );
-}
-
-
-/* ===============================================================
-   SECTION HEADER
-=============================================================== */
-
-function SectionHeader({
-  title,
-  subtitle,
-  action,
-  href,
-}: {
-  title: string;
-  subtitle: string;
-  action: string;
-  href: string;
-}) {
-  return (
-    <div className="flex items-center justify-between border-b border-[#eef2f0] px-6 py-5">
-
-      <div>
-
-        <h2 className="text-[14px] font-semibold text-[#263833]">
-          {title}
-        </h2>
-
-        <p className="mt-1 text-[10px] text-[#98a49f]">
-          {subtitle}
-        </p>
-
-      </div>
-
-      <a
-        href={href}
-        className="text-[10px] font-semibold text-[#0f766e] transition hover:text-[#095e58]"
-      >
-        {action} →
-      </a>
-
-    </div>
-  );
-}
-
-
-/* ===============================================================
-   MINI METRIC
-=============================================================== */
-
-function MiniMetric({
-  label,
-  value,
-  change,
-}: {
-  label: string;
-  value: string;
-  change: string;
-}) {
-  return (
-    <div className="rounded-xl bg-[#f7fbfa] p-3.5">
-
-      <p className="text-[9px] text-[#98a49f]">
-        {label}
-      </p>
-
-      <div className="mt-1 flex items-end gap-2">
-
-        <span className="text-[18px] font-semibold text-[#263833]">
-          {value}
-        </span>
-
-        <span className="mb-0.5 text-[8px] font-semibold text-[#2d906d]">
-          {change}
-        </span>
-
-      </div>
-
-    </div>
-  );
-}
-
-
-/* ===============================================================
-   TICKET SUMMARY
-=============================================================== */
-
-function TicketSummary({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="p-3 text-center">
-
-      <p className="text-[16px] font-semibold text-[#263833]">
-        {value}
-      </p>
-
-      <p className="mt-0.5 text-[8px] text-[#98a49f]">
-        {label}
-      </p>
-
-    </div>
-  );
-}
-
-
-/* ===============================================================
-   HEALTH ROW
-=============================================================== */
-
-function HealthRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="mb-3 flex items-center justify-between">
-
-      <div className="flex items-center gap-2">
-
-        <span className="h-1.5 w-1.5 rounded-full bg-[#39a879]" />
-
-        <span className="text-[10px] text-[#667570]">
-          {label}
-        </span>
-
-      </div>
-
-      <span className="text-[9px] font-semibold text-[#278260]">
-        {value}
-      </span>
-
-    </div>
-  );
-}
-
-
-/* ===============================================================
-   SUMMARY CARD
-=============================================================== */
-
-function SummaryCard({
-  title,
-  value,
-  description,
-  icon,
-}: {
-  title: string;
-  value: string;
-  description: string;
-  icon: string;
-}) {
-  return (
-    <div className="card card-hover flex items-center gap-4 p-4">
-
-      <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[#e5f5f1] text-[14px] font-bold text-[#0f766e]">
-        {icon}
-      </div>
-
-      <div>
-
-        <p className="text-[9px] uppercase tracking-[0.08em] text-[#98a49f]">
-          {title}
-        </p>
-
-        <p className="mt-0.5 text-[20px] font-semibold text-[#263833]">
-          {value}
-        </p>
-
-        <p className="text-[8px] text-[#a4afab]">
-          {description}
-        </p>
+          <div className="space-y-4">
+            {codeUpdates.map((cd) => (
+              <div key={cd.name} className="p-3.5 rounded-2xl bg-white border border-amber-200/70 space-y-2 shadow-2xs">
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-black text-slate-800 text-sm">{cd.name}</span>
+                    <span className="text-[10px] text-slate-500 ml-2 font-bold">{cd.updated} • {cd.date}</span>
+                  </div>
+                  <span className="font-black text-amber-700">{cd.percentage}% synced</span>
+                </div>
+
+                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    style={{ width: `${cd.percentage}%` }}
+                    className={`h-full rounded-full ${cd.color} shadow-xs`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right 6 Cols: Live System Uptime */}
+        <div className="lg:col-span-6 rounded-3xl border-2 border-emerald-200/80 bg-gradient-to-b from-white via-emerald-50/20 to-teal-50/30 p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b pb-4 border-emerald-100">
+            <div>
+              <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                <Server className="h-5 w-5 text-emerald-600" />
+                <span>System Infrastructure Health</span>
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">HIPAA compliant platform cluster monitors</p>
+            </div>
+
+            <span className="px-3 py-1 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-black flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              <span>99.9% Uptime</span>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-2xl bg-white border border-emerald-200/70 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-700">API Gateway</span>
+              </div>
+              <span className="text-xs font-black text-emerald-700">99.99%</span>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-white border border-emerald-200/70 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-700">PostgreSQL DB</span>
+              </div>
+              <span className="text-xs font-black text-emerald-700">99.98%</span>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-white border border-emerald-200/70 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-700">Notifications</span>
+              </div>
+              <span className="text-xs font-black text-emerald-700">99.95%</span>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-white border border-emerald-200/70 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-700">Encrypted Storage</span>
+              </div>
+              <span className="text-xs font-black text-emerald-700">99.97%</span>
+            </div>
+          </div>
+        </div>
 
       </div>
 

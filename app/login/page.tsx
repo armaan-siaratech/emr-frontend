@@ -258,6 +258,36 @@ function LoginContent() {
   // Ambient Theme switcher (mint | cyan | dark)
   const [themeMode, setThemeMode] = useState<"mint" | "cyan" | "dark">("mint");
 
+  const applyThemeToDocument = (mode: "mint" | "cyan" | "dark") => {
+    const root = document.documentElement;
+    root.classList.remove("theme-mint", "theme-cyan", "theme-dark", "dark");
+    if (mode === "dark") {
+      root.classList.add("dark", "theme-dark");
+    } else if (mode === "cyan") {
+      root.classList.add("theme-cyan");
+    } else {
+      root.classList.add("theme-mint");
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem("medicare-theme-mode") as "mint" | "cyan" | "dark" | null;
+      if (savedTheme) {
+        setThemeMode(savedTheme);
+        applyThemeToDocument(savedTheme);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleThemeChange = (mode: "mint" | "cyan" | "dark") => {
+    setThemeMode(mode);
+    try {
+      localStorage.setItem("medicare-theme-mode", mode);
+    } catch (_) {}
+    applyThemeToDocument(mode);
+  };
+
   // Biometric scanner state
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success">("idle");
 
@@ -388,9 +418,30 @@ function LoginContent() {
 
   const getCardContainerStyle = () => {
     if (themeMode === "dark") {
-      return "bg-slate-900/80 border-slate-700/80 text-white shadow-[0_25px_70px_rgba(0,0,0,0.5)]";
+      return "bg-slate-900/90 border-slate-700/80 text-white shadow-[0_25px_70px_rgba(0,0,0,0.8)]";
     }
     return "bg-white/40 border-white/80 shadow-[0_25px_70px_rgba(15,118,110,0.18)]";
+  };
+
+  const getInputStyle = () => {
+    if (themeMode === "dark") {
+      return "border-slate-700 bg-slate-800/95 text-white placeholder-slate-400 focus:border-[#14b8a6] focus:bg-slate-900 focus:ring-2 focus:ring-[#14b8a6]/20 shadow-xs";
+    }
+    return "border-white/80 bg-white/90 text-slate-900 placeholder-slate-400 focus:border-[#0f766e] focus:bg-white focus:ring-2 focus:ring-[#0f766e]/20 shadow-xs";
+  };
+
+  const getModalStyle = () => {
+    if (themeMode === "dark") {
+      return "border-slate-700 bg-slate-900 text-white shadow-[0_25px_70px_rgba(0,0,0,0.9)]";
+    }
+    return "border-white/80 bg-white/95 text-slate-900 shadow-2xl";
+  };
+
+  const getInactiveRoleStyle = () => {
+    if (themeMode === "dark") {
+      return "border-slate-700 bg-slate-800/80 text-slate-200 hover:bg-slate-700 hover:text-white";
+    }
+    return "border-white/80 bg-white/70 text-slate-800 hover:bg-white";
   };
 
   return (
@@ -410,9 +461,9 @@ function LoginContent() {
         <div className="flex items-center gap-1 p-1 rounded-full border border-white/60 bg-white/40 backdrop-blur-md shadow-xs">
           <button
             type="button"
-            onClick={() => setThemeMode("mint")}
+            onClick={() => handleThemeChange("mint")}
             title="Mint Clinical Theme"
-            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${themeMode === "mint"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${themeMode === "mint"
                 ? "bg-[#0f766e] text-white shadow-xs"
                 : "text-[#2e4d46] hover:bg-white/50"
               }`}
@@ -422,9 +473,9 @@ function LoginContent() {
           </button>
           <button
             type="button"
-            onClick={() => setThemeMode("cyan")}
+            onClick={() => handleThemeChange("cyan")}
             title="Cyan Oceanic Theme"
-            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${themeMode === "cyan"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${themeMode === "cyan"
                 ? "bg-[#0284c7] text-white shadow-xs"
                 : "text-[#2e4d46] hover:bg-white/50"
               }`}
@@ -434,9 +485,9 @@ function LoginContent() {
           </button>
           <button
             type="button"
-            onClick={() => setThemeMode("dark")}
+            onClick={() => handleThemeChange("dark")}
             title="Dark Clinical Theme"
-            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 ${themeMode === "dark"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${themeMode === "dark"
                 ? "bg-slate-800 text-teal-400 shadow-xs border border-teal-500/30"
                 : "text-[#2e4d46] hover:bg-white/50"
               }`}
@@ -450,9 +501,13 @@ function LoginContent() {
         <button
           type="button"
           onClick={() => setShowForgotModal(true)}
-          className="h-9 px-3 rounded-full border border-white/60 bg-white/40 backdrop-blur-md text-xs font-bold text-[#0f2d28] hover:bg-white/70 transition-all flex items-center gap-1.5 shadow-xs"
+          className={`h-9 px-3 rounded-full border backdrop-blur-md text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
+            themeMode === "dark"
+              ? "border-slate-700 bg-slate-800/90 text-teal-300 hover:bg-slate-700 hover:text-white"
+              : "border-white/60 bg-white/40 text-[#0f2d28] hover:bg-white/70"
+          }`}
         >
-          <HelpCircle className="h-4 w-4 text-[#0f766e]" />
+          <HelpCircle className={`h-4 w-4 ${themeMode === "dark" ? "text-teal-400" : "text-[#0f766e]"}`} />
           <span className="hidden sm:inline">Helpdesk</span>
         </button>
       </div>
@@ -530,7 +585,9 @@ function LoginContent() {
                 </div>
 
                 {/* Showcase Tab Pills */}
-                <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-black/5 dark:bg-white/5 border border-white/40 dark:border-slate-800">
+                <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-xl border ${
+                  themeMode === "dark" ? "bg-slate-950/80 border-slate-800" : "bg-black/5 border-white/40"
+                }`}>
                   <button
                     type="button"
                     onClick={() => setActiveShowcaseTab("vitals")}
@@ -569,7 +626,9 @@ function LoginContent() {
                 </div>
 
                 {/* Showcase Dynamic Content Panel */}
-                <div className="rounded-2xl border border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/90 p-4 shadow-sm min-h-[160px] flex flex-col justify-between transition-all">
+                <div className={`rounded-2xl border p-4 shadow-sm min-h-[160px] flex flex-col justify-between transition-all ${
+                  themeMode === "dark" ? "bg-slate-900 border-slate-700 text-white" : "bg-white/70 border-white/80 text-slate-800"
+                }`}>
 
                   {/* TAB 1: VITALS TELEMETRY MONITOR */}
                   {activeShowcaseTab === "vitals" && (
@@ -695,7 +754,11 @@ function LoginContent() {
                   <button
                     type="button"
                     onClick={() => loadPresetPersona("dr_sarah")}
-                    className="px-2.5 py-1.5 rounded-xl border border-white/80 bg-white/60 dark:bg-slate-800 dark:border-slate-700 text-[11px] font-bold text-[#0f2d28] dark:text-slate-200 hover:bg-white hover:border-[#0f766e] transition-all flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                    className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition-all flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer ${
+                      themeMode === "dark"
+                        ? "border-slate-700 bg-slate-800/90 text-slate-200 hover:bg-slate-700 hover:text-white"
+                        : "border-white/80 bg-white/60 text-[#0f2d28] hover:bg-white"
+                    }`}
                   >
                     <UserCheck className="h-3.5 w-3.5 text-[#0f766e]" />
                     Dr. Sarah (Clinician)
@@ -703,7 +766,11 @@ function LoginContent() {
                   <button
                     type="button"
                     onClick={() => loadPresetPersona("james_admin")}
-                    className="px-2.5 py-1.5 rounded-xl border border-white/80 bg-white/60 dark:bg-slate-800 dark:border-slate-700 text-[11px] font-bold text-[#0f2d28] dark:text-slate-200 hover:bg-white hover:border-[#0f766e] transition-all flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                    className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition-all flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer ${
+                      themeMode === "dark"
+                        ? "border-slate-700 bg-slate-800/90 text-slate-200 hover:bg-slate-700 hover:text-white"
+                        : "border-white/80 bg-white/60 text-[#0f2d28] hover:bg-white"
+                    }`}
                   >
                     <Building2 className="h-3.5 w-3.5 text-[#0284c7]" />
                     Facility Admin
@@ -711,7 +778,11 @@ function LoginContent() {
                   <button
                     type="button"
                     onClick={() => loadPresetPersona("elena_super")}
-                    className="px-2.5 py-1.5 rounded-xl border border-white/80 bg-white/60 dark:bg-slate-800 dark:border-slate-700 text-[11px] font-bold text-[#0f2d28] dark:text-slate-200 hover:bg-white hover:border-[#a34e36] transition-all flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                    className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition-all flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer ${
+                      themeMode === "dark"
+                        ? "border-slate-700 bg-slate-800/90 text-slate-200 hover:bg-slate-700 hover:text-white"
+                        : "border-white/80 bg-white/60 text-[#0f2d28] hover:bg-white"
+                    }`}
                   >
                     <ShieldCheck className="h-3.5 w-3.5 text-[#a34e36]" />
                     Super Admin
@@ -752,7 +823,9 @@ function LoginContent() {
                 </div>
 
                 {/* Auth Mode Toggle Pills (Password / Medical PIN / 2FA Code / Biometric) */}
-                <div className="flex items-center gap-1 p-1 rounded-xl bg-black/5 dark:bg-slate-800 border border-white/80 dark:border-slate-700 self-start sm:self-auto">
+                <div className={`flex items-center gap-1 p-1 rounded-xl border self-start sm:self-auto ${
+                  themeMode === "dark" ? "bg-slate-950/80 border-slate-800 text-slate-200" : "bg-black/5 border-white/80 text-slate-800"
+                }`}>
                   <button
                     type="button"
                     onClick={() => {
@@ -949,7 +1022,7 @@ function LoginContent() {
                           value={mfaCodeInput}
                           onChange={(e) => setMfaCodeInput(e.target.value.replace(/\D/g, ""))}
                           placeholder="e.g. 123456"
-                          className="h-12 w-full text-center tracking-[0.5em] font-mono text-xl font-black rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 text-[#172522] dark:text-white outline-none focus:border-[#0f766e] shadow-xs"
+                          className={`h-12 w-full text-center tracking-[0.5em] font-mono text-xl font-black rounded-2xl border outline-none ${getInputStyle()}`}
                         />
                       </div>
                     ) : (
@@ -963,7 +1036,7 @@ function LoginContent() {
                           value={mfaCodeInput}
                           onChange={(e) => setMfaCodeInput(e.target.value.toUpperCase())}
                           placeholder="e.g. A7B9-K2P4"
-                          className="h-12 w-full text-center tracking-widest font-mono text-base font-black uppercase rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 text-[#172522] dark:text-white outline-none focus:border-[#0f766e] shadow-xs"
+                          className={`h-12 w-full text-center tracking-widest font-mono text-base font-black uppercase rounded-2xl border outline-none ${getInputStyle()}`}
                         />
                         <p className="text-[10px] opacity-75 mt-1 text-center">
                           Each recovery code can only be used once.
@@ -1037,7 +1110,7 @@ function LoginContent() {
                         onClick={() => handleRoleSelect("doctor")}
                         className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${selectedRole === "doctor"
                             ? "border-[#0f766e] bg-[#0f766e] text-white shadow-md scale-[1.02]"
-                            : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
+                            : getInactiveRoleStyle()
                           }`}
                       >
                         <UserCheck className="h-4 w-4" />
@@ -1051,7 +1124,7 @@ function LoginContent() {
                         onClick={() => handleRoleSelect("admin")}
                         className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${selectedRole === "admin"
                             ? "border-[#0f766e] bg-[#0f766e] text-white shadow-md scale-[1.02]"
-                            : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
+                            : getInactiveRoleStyle()
                           }`}
                       >
                         <Building2 className="h-4 w-4" />
@@ -1065,7 +1138,7 @@ function LoginContent() {
                         onClick={() => handleRoleSelect("superadmin")}
                         className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${selectedRole === "superadmin"
                             ? "border-[#a34e36] bg-[#a34e36] text-white shadow-md scale-[1.02]"
-                            : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
+                            : getInactiveRoleStyle()
                           }`}
                       >
                         <ShieldCheck className="h-4 w-4" />
@@ -1079,7 +1152,7 @@ function LoginContent() {
                         onClick={() => handleRoleSelect("patient")}
                         className={`p-2.5 rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${selectedRole === "patient"
                             ? "border-[#0284c7] bg-[#0284c7] text-white shadow-md scale-[1.02]"
-                            : "border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-800/60 opacity-80 hover:opacity-100 hover:bg-white"
+                            : getInactiveRoleStyle()
                           }`}
                       >
                         <Stethoscope className="h-4 w-4" />
@@ -1116,7 +1189,7 @@ function LoginContent() {
                       {/* Email Field */}
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <label className="block text-xs font-bold">
+                          <label className={`block text-xs font-bold ${themeMode === "dark" ? "text-slate-200" : "text-slate-800"}`}>
                             Authorized Work Email
                           </label>
                           <span className="text-[10px] font-bold text-[#0f766e] dark:text-teal-400">
@@ -1127,7 +1200,7 @@ function LoginContent() {
                           </span>
                         </div>
                         <div className="relative">
-                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                          <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${themeMode === "dark" ? "text-teal-400" : "text-slate-400"}`} />
                           <input
                             type="email"
                             required
@@ -1142,7 +1215,7 @@ function LoginContent() {
                                     ? "dr.sarah@medicarehms.com"
                                     : "patient.care@medicarehms.com"
                             }
-                            className="h-11 w-full rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 pl-10 pr-4 text-xs font-bold outline-none transition-all placeholder:opacity-50 focus:border-[#0f766e] focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#0f766e]/20 shadow-xs"
+                            className={`h-11 w-full rounded-2xl border pl-10 pr-4 text-xs font-bold outline-none transition-all ${getInputStyle()}`}
                           />
                         </div>
                       </div>
@@ -1150,26 +1223,26 @@ function LoginContent() {
                       {/* Password Field */}
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <label className="block text-xs font-bold">
+                          <label className={`block text-xs font-bold ${themeMode === "dark" ? "text-slate-200" : "text-slate-800"}`}>
                             Account Password
                           </label>
                           <button
                             type="button"
                             onClick={() => setShowForgotModal(true)}
-                            className="text-[11px] font-bold text-[#a34e36] hover:underline cursor-pointer"
+                            className="text-[11px] font-bold text-[#a34e36] dark:text-rose-400 hover:underline cursor-pointer"
                           >
                             Forgot Password?
                           </button>
                         </div>
                         <div className="relative">
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                          <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${themeMode === "dark" ? "text-teal-400" : "text-slate-400"}`} />
                           <input
                             type={showPassword ? "text" : "password"}
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Enter password..."
-                            className="h-11 w-full rounded-2xl border border-white/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 pl-10 pr-12 text-xs font-bold outline-none transition-all placeholder:opacity-50 focus:border-[#0f766e] focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#0f766e]/20 shadow-xs"
+                            className={`h-11 w-full rounded-2xl border pl-10 pr-12 text-xs font-bold outline-none transition-all ${getInputStyle()}`}
                           />
                           <button
                             type="button"
@@ -1179,7 +1252,7 @@ function LoginContent() {
                               setShowPassword((prev) => !prev);
                             }}
                             aria-label={showPassword ? "Hide password" : "Show password"}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer z-20 touch-manipulation active:scale-95"
+                            className={`absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center transition-colors cursor-pointer z-20 touch-manipulation active:scale-95 ${themeMode === "dark" ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-800"}`}
                           >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -1433,7 +1506,9 @@ function LoginContent() {
 
             {/* Bottom Security Notice Banner */}
             <div className="pt-4 mt-6 border-t border-white/60 dark:border-slate-800">
-              <div className="rounded-2xl border border-white/80 dark:border-slate-800 bg-[#e4f2ee]/80 dark:bg-slate-800/80 p-3.5 flex items-start gap-3 shadow-xs">
+              <div className={`rounded-2xl border p-3.5 flex items-start gap-3 shadow-xs ${
+                themeMode === "dark" ? "border-slate-800 bg-slate-800/90 text-slate-200" : "border-white/80 bg-[#e4f2ee]/80 text-slate-800"
+              }`}>
                 <ShieldCheck className="h-5 w-5 text-[#0f766e] dark:text-teal-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-[11px] font-extrabold">HIPAA Security Notice</p>
@@ -1452,39 +1527,39 @@ function LoginContent() {
 
       {/* ==================== FORGOT PASSWORD / HELPDESK MODAL ==================== */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-3xl border-2 border-white/80 bg-white/95 dark:bg-slate-900 p-6 shadow-2xl space-y-4 relative">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className={`w-full max-w-md rounded-3xl border-2 p-6 shadow-2xl space-y-4 relative ${getModalStyle()}`}>
             <button
               type="button"
               onClick={() => { setShowForgotModal(false); setResetSent(false); }}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+              className={`absolute right-4 top-4 transition cursor-pointer ${themeMode === "dark" ? "text-slate-400 hover:text-white" : "text-slate-400 hover:text-slate-700"}`}
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-[#0f766e]/10 text-[#0f766e] dark:text-teal-400 flex items-center justify-center">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${themeMode === "dark" ? "bg-teal-500/20 text-teal-300 border border-teal-500/30" : "bg-[#0f766e]/10 text-[#0f766e]"}`}>
                 <Lock className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-base font-black">Reset Workstation Password</h4>
-                <p className="text-xs opacity-70">Enter your registered hospital email</p>
+                <h4 className={`text-base font-black ${themeMode === "dark" ? "text-white" : "text-[#172522]"}`}>Reset Workstation Password</h4>
+                <p className={`text-xs ${themeMode === "dark" ? "text-slate-300" : "text-slate-600"}`}>Enter your registered hospital email</p>
               </div>
             </div>
 
             {resetSent ? (
               <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-4 text-center space-y-2">
                 <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
-                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                <p className={`text-xs font-bold ${themeMode === "dark" ? "text-emerald-300" : "text-emerald-800"}`}>
                   Password Reset Instructions Sent!
                 </p>
-                <p className="text-[11px] opacity-80">
-                  Check your clinical inbox for <span className="font-bold">{resetEmail || email}</span> to complete secure identity verification.
+                <p className={`text-[11px] ${themeMode === "dark" ? "text-slate-300" : "text-slate-600"}`}>
+                  Check your clinical inbox for <span className="font-bold text-teal-400">{resetEmail || email}</span> to complete secure identity verification.
                 </p>
                 <button
                   type="button"
                   onClick={() => { setShowForgotModal(false); setResetSent(false); }}
-                  className="mt-2 w-full py-2 rounded-xl bg-[#0f766e] text-xs font-bold text-white shadow-xs cursor-pointer"
+                  className="mt-2 w-full py-2 rounded-xl bg-[#0f766e] text-xs font-bold text-white shadow-xs cursor-pointer hover:bg-[#115e59]"
                 >
                   Return to Login
                 </button>
@@ -1498,19 +1573,19 @@ function LoginContent() {
                 className="space-y-3"
               >
                 <div>
-                  <label className="block text-xs font-bold mb-1">Clinical Email Address</label>
+                  <label className={`block text-xs font-bold mb-1 ${themeMode === "dark" ? "text-slate-200" : "text-slate-800"}`}>Clinical Email Address</label>
                   <input
                     type="email"
                     required
                     value={resetEmail || email}
                     onChange={(e) => setResetEmail(e.target.value)}
                     placeholder="doctor@medicarehms.com"
-                    className="h-10 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-bold outline-none focus:border-[#0f766e]"
+                    className={`h-10 w-full rounded-xl border px-3 text-xs font-bold outline-none transition-all ${getInputStyle()}`}
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full h-10 rounded-xl bg-[#0f766e] text-xs font-black text-white hover:bg-[#0d5c56] transition-all cursor-pointer"
+                  className="w-full h-10 rounded-xl bg-[#0f766e] text-xs font-black text-white hover:bg-[#0d5c56] transition-all cursor-pointer shadow-md"
                 >
                   SEND SECURE RESET LINK
                 </button>

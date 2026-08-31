@@ -22,16 +22,141 @@
   --radius-lg: 22px;
 }
 
-/* ─── Base ─── */
+/* ─── Themes & Base ─── */
 html {
   scroll-behavior: smooth;
   font-size: 16px;
+  min-height: 100vh;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  background-color: var(--color-bg, #c7d9d6);
+  color: var(--color-text, #132a26);
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Mint Clinical Theme (Default) */
+html, html.theme-mint {
+  --color-bg: #c7d9d6;
+  --color-text: #132a26;
+  background: #c7d9d6 radial-gradient(ellipse at top, #d8ece7 0%, #c7d9d6 50%, #b8cdca 100%) !important;
+  color: #132a26;
+}
+
+/* Cyan Oceanic Theme */
+html.theme-cyan {
+  --color-bg: #ccebf6;
+  --color-text: #0c2a38;
+  background: #ccebf6 radial-gradient(ellipse at top, #e0f4fc 0%, #b8e4f5 50%, #a2d8ed 100%) !important;
+  color: #0c2a38;
+}
+
+/* Dark Clinical Theme - Premium High-Contrast Overrides */
+html.dark, html.theme-dark {
+  --color-bg: #0b1317;
+  --color-text: #f8fafc;
+  background: #0b1317 radial-gradient(ellipse at top, #111e25 0%, #0b1317 60%, #060b0e 100%) !important;
+  color: #f8fafc !important;
+}
+
+html.dark header, html.theme-dark header {
+  background-color: rgba(11, 22, 28, 0.95) !important;
+  border-color: rgba(30, 58, 68, 0.7) !important;
+}
+
+html.dark aside, html.theme-dark aside {
+  background-color: #061015 !important;
+  border-color: rgba(30, 58, 68, 0.7) !important;
+}
+
+html.dark main, html.theme-dark main {
+  background-color: transparent !important;
+  color: #f8fafc !important;
+}
+
+/* Glass Cards & Containers in Dark Mode */
+html.dark .bg-white,
+html.dark .bg-white\/90,
+html.dark .bg-white\/80,
+html.dark .bg-white\/70,
+html.dark .bg-white\/60,
+html.dark .bg-white\/95,
+html.dark .bg-white\/50,
+html.dark .bg-teal-50,
+html.dark .bg-teal-50\/60,
+html.dark .bg-teal-50\/50,
+html.dark .bg-slate-50 {
+  background-color: rgba(17, 28, 35, 0.88) !important;
+  border-color: rgba(45, 212, 191, 0.25) !important;
+  color: #f8fafc !important;
+}
+
+/* Text Colors in Dark Mode */
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700,
+html.dark .text-\[\#172522\],
+html.dark .text-\[\#132a26\],
+html.dark .text-\[\#0f2d28\] {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-600,
+html.dark .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Inputs, Selects, Textareas in Dark Mode */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #13232b !important;
+  border-color: rgba(45, 212, 191, 0.35) !important;
+  color: #ffffff !important;
+}
+
+html.dark input::placeholder,
+html.dark select::placeholder,
+html.dark textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Tables in Dark Mode */
+html.dark table {
+  background-color: transparent !important;
+}
+
+html.dark thead th {
+  background-color: #13232b !important;
+  color: #2dd4bf !important;
+  border-color: rgba(45, 212, 191, 0.2) !important;
+}
+
+html.dark tbody tr {
+  border-color: rgba(30, 58, 68, 0.5) !important;
+}
+
+html.dark tbody tr:hover {
+  background-color: rgba(20, 184, 166, 0.12) !important;
+}
+
+/* Badges in Dark Mode */
+html.dark .bg-teal-50\/60,
+html.dark .bg-sky-50,
+html.dark .bg-purple-50,
+html.dark .bg-emerald-50 {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+  border-color: rgba(45, 212, 191, 0.3) !important;
+  color: #2dd4bf !important;
 }
 
 ::selection {

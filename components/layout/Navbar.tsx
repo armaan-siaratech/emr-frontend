@@ -28,6 +28,39 @@ export default function Navbar() {
   const [recentNotifs, setRecentNotifs] = useState<NotificationItem[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
 
+  // Theme state synced with localStorage
+  const [themeMode, setThemeMode] = useState<"mint" | "cyan" | "dark">("mint");
+
+  const applyThemeToDocument = useCallback((mode: "mint" | "cyan" | "dark") => {
+    const root = document.documentElement;
+    root.classList.remove("theme-mint", "theme-cyan", "theme-dark", "dark");
+    if (mode === "dark") {
+      root.classList.add("dark", "theme-dark");
+    } else if (mode === "cyan") {
+      root.classList.add("theme-cyan");
+    } else {
+      root.classList.add("theme-mint");
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem("medicare-theme-mode") as "mint" | "cyan" | "dark" | null;
+      if (savedTheme) {
+        setThemeMode(savedTheme);
+        applyThemeToDocument(savedTheme);
+      }
+    } catch (_) {}
+  }, [applyThemeToDocument]);
+
+  const changeTheme = (mode: "mint" | "cyan" | "dark") => {
+    setThemeMode(mode);
+    try {
+      localStorage.setItem("medicare-theme-mode", mode);
+    } catch (_) {}
+    applyThemeToDocument(mode);
+  };
+
   const fetchUnreadCount = useCallback(async () => {
     try {
       const res = await getUnreadCountApi();
@@ -148,7 +181,50 @@ export default function Navbar() {
       </div>
 
       {/* Right User & Notification Bar */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Theme Pills Switcher (Mint | Cyan | Dark) */}
+        <div className="flex items-center gap-1 p-1 rounded-full border border-[#bce0d5] bg-white/90 shadow-xs">
+          <button
+            type="button"
+            onClick={() => changeTheme("mint")}
+            title="Mint Clinical Theme"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+              themeMode === "mint"
+                ? "bg-[#0f766e] text-white shadow-xs"
+                : "text-[#2e4d46] hover:bg-[#d9f0ea]"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-[#14b8a6]" />
+            <span className="hidden sm:inline">Mint</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => changeTheme("cyan")}
+            title="Cyan Oceanic Theme"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+              themeMode === "cyan"
+                ? "bg-[#0284c7] text-white shadow-xs"
+                : "text-[#2e4d46] hover:bg-[#ccebf6]"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-[#38bdf8]" />
+            <span className="hidden sm:inline">Cyan</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => changeTheme("dark")}
+            title="Dark Clinical Theme"
+            className={`h-7 px-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+              themeMode === "dark"
+                ? "bg-slate-900 text-teal-400 border border-teal-500/40 shadow-xs"
+                : "text-[#2e4d46] hover:bg-slate-200"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-slate-900 border border-teal-400" />
+            <span className="hidden sm:inline">Dark</span>
+          </button>
+        </div>
+
         {/* Notification Bell Button with Live Badge Count (1, 2, 3...) */}
         <div className="relative" ref={notifRef}>
           <button

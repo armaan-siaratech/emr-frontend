@@ -1,640 +1,384 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-
-type Notification = {
-  id: number;
-  type: "support" | "admin" | "system" | "security" | "report";
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-  reference?: string;
-};
-
-const initialNotifications: Notification[] = [
-  {
-    id: 1,
-    type: "support",
-    title: "New Support Ticket",
-    message:
-      "John Anderson raised a high priority support ticket regarding patient records.",
-    time: "5 min ago",
-    read: false,
-    reference: "TKT-10482",
-  },
-  {
-    id: 2,
-    type: "admin",
-    title: "New Administrator Created",
-    message:
-      "Sarah Williams has been successfully added as a new administrator.",
-    time: "24 min ago",
-    read: false,
-    reference: "ADM-00249",
-  },
-  {
-    id: 3,
-    type: "security",
-    title: "Security Alert",
-    message:
-      "Multiple unsuccessful login attempts were detected on an administrator account.",
-    time: "42 min ago",
-    read: false,
-  },
-  {
-    id: 4,
-    type: "system",
-    title: "System Update Completed",
-    message:
-      "The scheduled healthcare platform system update has been completed successfully.",
-    time: "1 hour ago",
-    read: true,
-  },
-  {
-    id: 5,
-    type: "support",
-    title: "Support Ticket Resolved",
-    message:
-      "Ticket TKT-10478 has been marked as resolved by the support team.",
-    time: "2 hours ago",
-    read: true,
-    reference: "TKT-10478",
-  },
-  {
-    id: 6,
-    type: "report",
-    title: "Monthly Report Available",
-    message:
-      "The July 2026 system activity report is now available for review.",
-    time: "4 hours ago",
-    read: true,
-  },
-  {
-    id: 7,
-    type: "admin",
-    title: "Administrator Updated",
-    message:
-      "Administrator permissions for Michael Brown were successfully updated.",
-    time: "Yesterday",
-    read: true,
-    reference: "ADM-00241",
-  },
-  {
-    id: 8,
-    type: "system",
-    title: "Database Backup Completed",
-    message:
-      "The scheduled database backup was completed successfully.",
-    time: "Yesterday",
-    read: true,
-  },
-];
-
-export default function NotificationsPage() {
-  const [notifications, setNotifications] =
-    useState<Notification[]>(initialNotifications);
-
-  const [activeTab, setActiveTab] = useState("All");
-
-  const unreadCount = notifications.filter(
-    (notification) => !notification.read
-  ).length;
-
-  const filteredNotifications = notifications.filter((notification) => {
-    if (activeTab === "Unread") return !notification.read;
-    if (activeTab === "System")
-      return notification.type === "system";
-    if (activeTab === "Admin")
-      return notification.type === "admin";
-    if (activeTab === "Support")
-      return notification.type === "support";
-
-    return true;
-  });
-
-  function markAsRead(id: number) {
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === id
-          ? { ...notification, read: true }
-          : notification
-      )
-    );
-  }
-
-  function markAllAsRead() {
-    setNotifications((current) =>
-      current.map((notification) => ({
-        ...notification,
-        read: true,
-      }))
-    );
-  }
-
-  return (
-    <div className="w-full">
-
-      {/* HEADER */}
-
-      <div className="mb-6 flex items-end justify-between">
-
-        <div>
-
-          <div className="mb-1 flex items-center gap-2">
-
-            <Link
-              href="/super-admin"
-              className="text-[10px] text-[#8A9995] hover:text-[#0F766E]"
-            >
-              Super Admin
-            </Link>
-
-            <span className="text-[10px] text-[#B3BCB8]">
-              /
-            </span>
-
-            <span className="text-[10px] text-[#596964]">
-              Notifications
-            </span>
-
-          </div>
-
-          <h1 className="text-[24px] font-semibold tracking-[-0.03em] text-[#172522]">
-            Notifications
-          </h1>
-
-          <p className="mt-1 text-[11px] text-[#8A9995]">
-            Stay updated with important system activities and alerts.
-          </p>
-
-        </div>
-
-        <button
-          onClick={markAllAsRead}
-          className="flex items-center gap-2 rounded-[9px] border border-[#DDE7E4] bg-white px-4 py-2.5 text-[10px] font-semibold text-[#596964] transition hover:bg-[#F5F9F8]"
-        >
-          <CheckDoubleIcon />
-          Mark all as read
-        </button>
-
-      </div>
-
-
-      {/* SUMMARY */}
-
-      <div className="mb-5 grid grid-cols-3 gap-4">
-
-        <NotificationSummary
-          title="Total Notifications"
-          value={notifications.length.toString()}
-          description="All system notifications"
-          icon={<BellIcon />}
-        />
-
-        <NotificationSummary
-          title="Unread"
-          value={unreadCount.toString()}
-          description="Require your attention"
-          icon={<AlertIcon />}
-        />
-
-        <NotificationSummary
-          title="Today"
-          value="6"
-          description="Notifications received today"
-          icon={<ClockIcon />}
-        />
-
-      </div>
-
-
-      {/* MAIN CARD */}
-
-      <div className="overflow-hidden rounded-[16px] border border-[#E4ECE9] bg-white shadow-[0_5px_25px_rgba(31,56,51,0.04)]">
-
-        {/* TABS */}
-
-        <div className="flex items-center justify-between border-b border-[#EDF2F0] px-6">
-
-          <div className="flex items-center gap-6">
-
-            {[
-              ["All", notifications.length],
-              ["Unread", unreadCount],
-              ["System", notifications.filter((n) => n.type === "system").length],
-              ["Admin", notifications.filter((n) => n.type === "admin").length],
-              ["Support", notifications.filter((n) => n.type === "support").length],
-            ].map(([tab, count]) => (
-
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab as string)}
-                className={`relative flex items-center gap-2 py-4 text-[10px] font-semibold transition ${
-                  activeTab === tab
-                    ? "text-[#0F766E]"
-                    : "text-[#8A9995] hover:text-[#596964]"
-                }`}
-              >
-
-                {tab}
-
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[8px] ${
-                    activeTab === tab
-                      ? "bg-[#E6F4F1] text-[#0F766E]"
-                      : "bg-[#F1F4F3] text-[#8E9995]"
-                  }`}
-                >
-                  {count}
-                </span>
-
-                {activeTab === tab && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#0F766E]" />
-                )}
-
-              </button>
-
-            ))}
-
-          </div>
-
-          <button className="flex h-8 w-8 items-center justify-center rounded-[7px] text-[#8A9995] hover:bg-[#F3F7F6]">
-            <FilterIcon />
-          </button>
-
-        </div>
-
-
-        {/* NOTIFICATION LIST */}
-
-        <div>
-
-          {filteredNotifications.map((notification) => (
-
-            <NotificationRow
-              key={notification.id}
-              notification={notification}
-              onRead={() => markAsRead(notification.id)}
-            />
-
-          ))}
-
-          {filteredNotifications.length === 0 && (
-
-            <div className="px-6 py-20 text-center">
-
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF5F3] text-[#0F766E]">
-                <BellIcon />
-              </div>
-
-              <p className="mt-4 text-[12px] font-semibold text-[#596964]">
-                No notifications
-              </p>
-
-              <p className="mt-1 text-[9px] text-[#9AA5A1]">
-                You don&apos;t have any notifications in this category.
-              </p>
-
-
-            </div>
-
-          )}
-
-        </div>
-
-
-        {/* FOOTER */}
-
-        <div className="flex items-center justify-between border-t border-[#EDF2F0] px-6 py-4">
-
-          <p className="text-[9px] text-[#98A49F]">
-            Showing{" "}
-            <span className="font-semibold text-[#596964]">
-              {filteredNotifications.length}
-            </span>{" "}
-            notifications
-          </p>
-
-          <div className="flex items-center gap-1">
-
-            <button className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-[#E1E9E6] text-[10px] text-[#A4AEAA]">
-              ←
-            </button>
-
-            <button className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#0F766E] text-[10px] font-semibold text-white">
-              1
-            </button>
-
-            <button className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-[#E1E9E6] text-[10px] text-[#63716D]">
-              2
-            </button>
-
-            <button className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-[#E1E9E6] text-[10px] text-[#63716D]">
-              →
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-
-/* ============================================================
-   NOTIFICATION ROW
-============================================================ */
-
-function NotificationRow({
-  notification,
-  onRead,
-}: {
-  notification: Notification;
-  onRead: () => void;
-}) {
-
-  return (
-
-    <div
-      className={`group flex items-start gap-4 border-b border-[#F0F3F2] px-6 py-5 transition hover:bg-[#FAFCFB] ${
-        !notification.read ? "bg-[#FBFDFC]" : "bg-white"
-      }`}
-    >
-
-      {/* ICON */}
-
-      <div
-        className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] ${getTypeStyle(
-          notification.type
-        )}`}
-      >
-        {getTypeIcon(notification.type)}
-      </div>
-
-
-      {/* CONTENT */}
-
-      <div className="min-w-0 flex-1">
-
-        <div className="flex items-center gap-2">
-
-          <h3
-            className={`text-[10px] ${
-              notification.read
-                ? "font-semibold text-[#596964]"
-                : "font-bold text-[#263833]"
-            }`}
-          >
-            {notification.title}
-          </h3>
-
-          {!notification.read && (
-            <span className="h-1.5 w-1.5 rounded-full bg-[#0F766E]" />
-          )}
-
-        </div>
-
-        <p className="mt-1 max-w-[760px] text-[10px] leading-5 text-[#8A9995]">
-          {notification.message}
-        </p>
-
-
-        <div className="mt-2 flex items-center gap-3">
-
-          <span className="text-[8px] text-[#A1ABA7]">
-            {notification.time}
-          </span>
-
-          {notification.reference && (
-            <>
-              <span className="h-1 w-1 rounded-full bg-[#C4CDCA]" />
-
-              <span className="text-[8px] font-semibold text-[#0F766E]">
-                {notification.reference}
-              </span>
-            </>
-          )}
-
-        </div>
-
-      </div>
-
-
-      {/* ACTION */}
-
-      <div className="flex items-center gap-2 opacity-0 transition group-hover:opacity-100">
-
-        {!notification.read && (
-
-          <button
-            onClick={onRead}
-            className="rounded-[7px] px-2.5 py-1.5 text-[8px] font-semibold text-[#0F766E] hover:bg-[#EAF5F2]"
-          >
-            Mark as read
-          </button>
-
-        )}
-
-        <button className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[#9AA5A1] hover:bg-[#F0F4F3]">
-          <MoreIcon />
-        </button>
-
-      </div>
-
-    </div>
-  );
-}
-
-
-/* ============================================================
-   SUMMARY
-============================================================ */
-
-function NotificationSummary({
-  title,
-  value,
-  description,
-  icon,
-}: {
-  title: string;
-  value: string;
-  description: string;
-  icon: React.ReactNode;
-}) {
-
-  return (
-
-    <div className="rounded-[14px] border border-[#E4ECE9] bg-white p-5 shadow-[0_5px_25px_rgba(31,56,51,0.03)]">
-
-      <div className="flex items-start justify-between">
-
-        <div>
-
-          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-[#8B9893]">
-            {title}
-          </p>
-
-          <p className="mt-3 text-[24px] font-semibold tracking-[-0.04em] text-[#172522]">
-            {value}
-          </p>
-
-          <p className="mt-1 text-[9px] text-[#98A49F]">
-            {description}
-          </p>
-
-        </div>
-
-        <div className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-[#E7F4F1] text-[#0F766E]">
-          {icon}
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-
-/* ============================================================
-   TYPE STYLES
-============================================================ */
-
-function getTypeStyle(type: Notification["type"]) {
-
-  const styles = {
-    support: "bg-[#FFF0EE] text-[#C75A50]",
-    admin: "bg-[#E7F4F1] text-[#0F766E]",
-    system: "bg-[#EEF4F8] text-[#527B99]",
-    security: "bg-[#FFF3E5] text-[#BD7730]",
-    report: "bg-[#F0ECF8] text-[#79629A]",
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Bell,
+  CheckCheck,
+  Trash2,
+  RefreshCw,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Shield,
+  LifeBuoy,
+  Building,
+  UserCheck,
+  ChevronLeft,
+  ChevronRight,
+  Radio,
+  Sparkles,
+} from "lucide-react";
+import {
+  getNotificationsApi,
+  markNotificationReadApi,
+  markAllNotificationsReadApi,
+  deleteNotificationApi,
+  NotificationItem,
+} from "@/lib/api/notificationApi";
+import { getTicketWebSocketUrl } from "@/lib/api/ticketApi";
+
+export default function SuperAdminNotificationsPage() {
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize] = useState<number>(20);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filter Tabs: 'All', 'Unread', 'Support', 'Admin', 'System'
+  const [activeTab, setActiveTab] = useState<string>("All");
+  const [search, setSearch] = useState<string>("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const typeParam =
+        activeTab === "Support"
+          ? "support"
+          : activeTab === "Admin"
+          ? "admin"
+          : activeTab === "System"
+          ? "system"
+          : undefined;
+
+      const isReadParam = activeTab === "Unread" ? false : undefined;
+
+      const res = await getNotificationsApi({
+        type: typeParam,
+        is_read: isReadParam,
+        page,
+        page_size: pageSize,
+      });
+
+      setItems(res.items || []);
+      setTotalCount(res.total || 0);
+      setUnreadCount(res.unread_count || 0);
+    } catch (err: any) {
+      setError(err?.message || "Failed to load platform notifications.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeTab, page, pageSize]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4500);
   };
 
-  return styles[type];
-}
+  // Live WebSocket Connection
+  useEffect(() => {
+    const wsUrl = getTicketWebSocketUrl();
+    let socket: WebSocket | null = null;
 
+    try {
+      socket = new WebSocket(wsUrl);
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data?.type === "NEW_NOTIFICATION" || data?.type === "TICKET_CREATED" || data?.type === "TICKET_UPDATED") {
+            showToast(`🔔 ${data.message || "New Live Notification"}`);
+            loadData();
+          }
+        } catch (_) {}
+      };
+    } catch (_) {}
 
-function getTypeIcon(type: Notification["type"]) {
+    return () => {
+      if (socket) socket.close();
+    };
+  }, [loadData]);
 
-  if (type === "support") return <TicketIcon />;
-  if (type === "admin") return <UserIcon />;
-  if (type === "system") return <SystemIcon />;
-  if (type === "security") return <ShieldIcon />;
+  // Mark Single as Read
+  const handleMarkRead = async (id: string) => {
+    try {
+      const res = await markNotificationReadApi(id);
+      setUnreadCount(res.unread_count);
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, is_read: true } : item))
+      );
+    } catch (err: any) {
+      showToast(err?.message || "Failed to mark notification as read.");
+    }
+  };
 
-  return <ReportIcon />;
-}
+  // Mark All as Read
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsReadApi();
+      setUnreadCount(0);
+      setItems((prev) => prev.map((item) => ({ ...item, is_read: true })));
+      showToast("All notifications marked as read!");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to mark all as read.");
+    }
+  };
 
+  // Soft Delete Notification
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await deleteNotificationApi(id);
+      setUnreadCount(res.unread_count);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      showToast("Notification deleted.");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to delete notification.");
+    }
+  };
 
-/* ============================================================
-   ICONS
-============================================================ */
-
-function BellIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-      <path d="M10 21h4" />
-    </svg>
+  const filteredItems = items.filter(
+    (item) =>
+      item.title.toLowerCase().includes(search.toLowerCase()) ||
+      item.message.toLowerCase().includes(search.toLowerCase()) ||
+      (item.reference && item.reference.toLowerCase().includes(search.toLowerCase()))
   );
-}
 
-function AlertIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M10.3 3.4 2.5 17a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.4a2 2 0 0 0-3.4 0Z" />
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
-    </svg>
-  );
-}
+  const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
-function ClockIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" />
-    </svg>
-  );
-}
+    <div className="w-full space-y-6 font-sans">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border-2 border-[#7ee8d5]/80 bg-[#0c2420]/95 px-5 py-3.5 text-xs font-bold text-teal-200 shadow-[0_15px_40px_rgba(15,118,110,0.4)] backdrop-blur-xl animate-bounce">
+          <Radio className="w-5 h-5 text-teal-400 animate-pulse" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
-function CheckDoubleIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="m2 12 5 5L18 6" />
-      <path d="m9 17 2 2L22 8" />
-    </svg>
-  );
-}
+      {/* Sleek Header Banner */}
+      <div className="relative overflow-hidden rounded-2xl border-2 border-[#7ee8d5]/60 bg-gradient-to-r from-[#0F766E] via-[#115e59] to-[#0d4f4b] px-5 py-4 shadow-md text-white backdrop-blur-2xl">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-32 w-32 rounded-full bg-[#7ee8d5]/20 blur-2xl" />
 
-function TicketIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M4 6h16v12H4z" />
-      <path d="M8 10h8" />
-      <path d="M8 14h5" />
-    </svg>
-  );
-}
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Link href="/super-admin" className="text-[10px] font-extrabold uppercase tracking-widest text-teal-200 hover:underline">
+                Super Admin
+              </Link>
+              <span className="text-teal-200 text-xs">/</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-teal-300">
+                Platform Notifications
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
+              <Bell className="w-6 h-6 text-teal-300" />
+              Notifications Center
+            </h1>
+            <p className="mt-0.5 text-xs font-medium text-teal-100/90">
+              Live audit events, support ticket submissions, and platform system alerts.
+            </p>
+          </div>
 
-function UserIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21a8 8 0 0 1 16 0" />
-    </svg>
-  );
-}
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                onClick={handleMarkAllRead}
+                className="flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-black text-[#0F766E] shadow-sm hover:bg-teal-50 transition cursor-pointer active:scale-95"
+              >
+                <CheckCheck className="w-4 h-4 text-[#0F766E]" />
+                <span>Mark All Read ({unreadCount})</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
-function SystemIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="4" width="18" height="14" rx="2" />
-      <path d="M8 21h8" />
-      <path d="M12 18v3" />
-    </svg>
-  );
-}
+      {/* Main Container */}
+      <div className="rounded-3xl border-2 border-[#7ee8d5]/60 bg-white/95 p-4 shadow-[0_10px_30px_rgba(15,118,110,0.06)] backdrop-blur-2xl space-y-4">
+        {/* Filter Tabs & Search */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3 border-b border-[#EDF2F0] pb-4">
+          {/* Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-1 bg-[#FAFCFB] rounded-2xl border border-[#DFE8E5]">
+            {["All", "Unread", "Support", "Admin", "System"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setPage(1);
+                }}
+                className={`rounded-xl px-4 py-1.5 text-xs font-extrabold transition cursor-pointer ${
+                  activeTab === tab
+                    ? "bg-[#0F766E] text-white shadow-sm"
+                    : "text-[#596964] hover:text-[#0F766E]"
+                }`}
+              >
+                {tab} {tab === "Unread" && unreadCount > 0 ? `(${unreadCount})` : ""}
+              </button>
+            ))}
+          </div>
 
-function ShieldIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
+          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#91A09B]" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search notification title..."
+                className="h-9 w-full rounded-xl border border-[#DFE8E5] bg-white pl-9 pr-3 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E]"
+              />
+            </div>
 
-function ReportIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M6 3h9l4 4v14H6z" />
-      <path d="M14 3v5h5" />
-      <path d="M9 13h6" />
-      <path d="M9 17h6" />
-    </svg>
-  );
-}
+            <button
+              onClick={loadData}
+              className="p-2 rounded-xl border border-[#DFE8E5] bg-white hover:bg-[#EAF5F2] hover:text-[#0F766E] text-[#596964] transition cursor-pointer"
+              title="Refresh Notifications"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin text-[#0F766E]" : ""}`} />
+            </button>
+          </div>
+        </div>
 
-function FilterIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M4 6h16" />
-      <path d="M7 12h10" />
-      <path d="M10 18h4" />
-    </svg>
-  );
-}
+        {/* Notifications List */}
+        {isLoading ? (
+          <div className="p-16 text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#0F766E] mb-3" />
+            <p className="font-bold text-[#172522]">Loading notifications from database...</p>
+          </div>
+        ) : error ? (
+          <div className="p-12 text-center text-rose-700 bg-rose-50 rounded-2xl border border-rose-200">
+            <AlertCircle className="w-8 h-8 mx-auto mb-2 text-rose-600" />
+            <p className="font-bold">{error}</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="p-16 text-center">
+            <Bell className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
+            <h3 className="font-black text-lg text-[#172522]">No Notifications Found</h3>
+            <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
+              There are no notifications matching your selected filter.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[#F0F3F2]">
+            {filteredItems.map((item) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`p-4 rounded-2xl transition-all flex items-start justify-between gap-4 ${
+                  !item.is_read
+                    ? "bg-gradient-to-r from-teal-50/80 via-emerald-50/30 to-white border border-teal-200/80 shadow-xs"
+                    : "hover:bg-[#FAFCFB]"
+                }`}
+              >
+                <div className="flex items-start gap-3.5">
+                  <div
+                    className={`h-10 w-10 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs ${
+                      item.type === "support"
+                        ? "bg-teal-100 text-teal-800"
+                        : item.type === "admin"
+                        ? "bg-sky-100 text-sky-800"
+                        : item.type === "security"
+                        ? "bg-rose-100 text-rose-800"
+                        : "bg-emerald-100 text-emerald-800"
+                    }`}
+                  >
+                    {item.type === "support" ? (
+                      <LifeBuoy className="w-5 h-5" />
+                    ) : item.type === "admin" ? (
+                      <UserCheck className="w-5 h-5" />
+                    ) : item.type === "security" ? (
+                      <Shield className="w-5 h-5" />
+                    ) : (
+                      <Sparkles className="w-5 h-5" />
+                    )}
+                  </div>
 
-function MoreIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="5" cy="12" r="1.5" />
-      <circle cx="12" cy="12" r="1.5" />
-      <circle cx="19" cy="12" r="1.5" />
-    </svg>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className={`text-xs ${!item.is_read ? "font-black text-[#172522]" : "font-bold text-slate-700"}`}>
+                        {item.title}
+                      </h4>
+                      {item.reference && (
+                        <span className="rounded-md bg-teal-100/70 px-2 py-0.5 text-[9px] font-mono font-bold text-[#0F766E]">
+                          {item.reference}
+                        </span>
+                      )}
+                      {!item.is_read && (
+                        <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed max-w-3xl">
+                      {item.message}
+                    </p>
+
+                    <p className="text-[10px] font-mono text-slate-400">
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  {!item.is_read && (
+                    <button
+                      onClick={() => handleMarkRead(item.id)}
+                      className="p-1.5 rounded-lg text-teal-700 hover:bg-teal-100 transition cursor-pointer"
+                      title="Mark as read"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                    title="Delete notification"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between pt-3 border-t border-[#EDF2F0]">
+          <p className="text-xs text-[#8A9995]">
+            Showing <span className="font-bold text-[#263833]">{filteredItems.length}</span> of{" "}
+            <span className="font-bold text-[#263833]">{totalCount}</span> notifications
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#E1E9E6] text-xs text-[#52615D] hover:bg-teal-50 disabled:opacity-40 transition cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-[#52615D] font-mono font-bold px-2">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#E1E9E6] text-xs text-[#52615D] hover:bg-teal-50 disabled:opacity-40 transition cursor-pointer"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -29,15 +29,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/register-tenant") ||
     isSuspendedRoute;
 
-  // Poll tenant status every 10 seconds for active logged-in tenant users
+  // Poll tenant status silently every 30 seconds for active logged-in tenant users
   useEffect(() => {
     if (isAuthenticated && !isSuperAdmin && !isSuspended) {
       const interval = setInterval(() => {
-        refreshUser().catch(() => {});
-      }, 10000);
+        refreshUser(false).catch(() => {});
+      }, 30000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, isSuperAdmin, isSuspended, refreshUser]);
+
 
   // Mandatory redirect for suspended tenant users to /suspended
   useEffect(() => {

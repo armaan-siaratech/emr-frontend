@@ -36,12 +36,19 @@ export async function apiClient<T = any>(
 ): Promise<T> {
   const { retryOnAuthError = true, headers, ...restOptions } = options;
 
+  const isFormData = typeof FormData !== "undefined" && restOptions.body instanceof FormData;
+
+  const reqHeaders = new Headers(headers);
+
+  if (!isFormData && !reqHeaders.has("Content-Type")) {
+    reqHeaders.set("Content-Type", "application/json");
+  } else if (isFormData) {
+    reqHeaders.delete("Content-Type");
+  }
+
   const config: RequestInit = {
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
+    headers: reqHeaders,
     ...restOptions,
   };
 

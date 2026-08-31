@@ -1,12 +1,12 @@
 import { apiClient } from "./client";
 
-export interface ICD10Item {
+export interface CPTItem {
   id: string;
   code: string;
   description: string;
-  parent_code: string | null;
-  chapter: string | null;
   category: string | null;
+  subcategory: string | null;
+  fee: string | null;
   version: string;
   is_active: boolean;
   is_deleted?: boolean;
@@ -14,34 +14,34 @@ export interface ICD10Item {
   updated_at: string;
 }
 
-export interface ICD10ListResponse {
+export interface CPTListResponse {
   total: number;
   page: number;
   page_size: number;
-  items: ICD10Item[];
+  items: CPTItem[];
 }
 
-export interface ICD10CreateParams {
+export interface CPTCreateParams {
   code: string;
   description: string;
-  parent_code?: string | null;
-  chapter?: string | null;
   category?: string | null;
+  subcategory?: string | null;
+  fee?: string | null;
   version?: string;
   is_active?: boolean;
 }
 
-export interface ICD10UpdateParams {
+export interface CPTUpdateParams {
   code?: string;
   description?: string;
-  parent_code?: string | null;
-  chapter?: string | null;
   category?: string | null;
+  subcategory?: string | null;
+  fee?: string | null;
   version?: string;
   is_active?: boolean;
 }
 
-export interface UploadICD10Response {
+export interface UploadCPTResponse {
   filename: string;
   message: string;
   created_count: number;
@@ -50,20 +50,20 @@ export interface UploadICD10Response {
   total_rows: number;
 }
 
-export async function getICD10CodesApi(params?: {
+export async function getCPTCodesApi(params?: {
   search?: string;
-  chapter?: string;
   category?: string;
+  subcategory?: string;
   version?: string;
   is_active?: boolean;
   include_deleted?: boolean;
   page?: number;
   page_size?: number;
-}): Promise<ICD10ListResponse> {
+}): Promise<CPTListResponse> {
   const query = new URLSearchParams();
   if (params?.search) query.append("search", params.search);
-  if (params?.chapter && params.chapter !== "All") query.append("chapter", params.chapter);
   if (params?.category && params.category !== "All") query.append("category", params.category);
+  if (params?.subcategory && params.subcategory !== "All") query.append("subcategory", params.subcategory);
   if (params?.version && params.version !== "All") query.append("version", params.version);
   if (params?.is_active !== undefined) query.append("is_active", String(params.is_active));
   if (params?.include_deleted !== undefined) query.append("include_deleted", String(params.include_deleted));
@@ -71,47 +71,47 @@ export async function getICD10CodesApi(params?: {
   if (params?.page_size) query.append("page_size", String(params.page_size));
 
   const queryString = query.toString();
-  const url = `/api/clinical/icd10${queryString ? `?${queryString}` : ""}`;
-  return apiClient<ICD10ListResponse>(url, { method: "GET" });
+  const url = `/api/clinical/cpt${queryString ? `?${queryString}` : ""}`;
+  return apiClient<CPTListResponse>(url, { method: "GET" });
 }
 
-export async function getICD10ByCodeApi(code: string): Promise<ICD10Item> {
-  return apiClient<ICD10Item>(`/api/clinical/icd10/code/${encodeURIComponent(code)}`, {
+export async function getCPTByCodeApi(code: string): Promise<CPTItem> {
+  return apiClient<CPTItem>(`/api/clinical/cpt/code/${encodeURIComponent(code)}`, {
     method: "GET",
   });
 }
 
-export async function createICD10CodeApi(data: ICD10CreateParams): Promise<ICD10Item> {
-  return apiClient<ICD10Item>("/api/clinical/icd10", {
+export async function createCPTCodeApi(data: CPTCreateParams): Promise<CPTItem> {
+  return apiClient<CPTItem>("/api/clinical/cpt", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function updateICD10CodeApi(id: string, data: ICD10UpdateParams): Promise<ICD10Item> {
-  return apiClient<ICD10Item>(`/api/clinical/icd10/${id}`, {
+export async function updateCPTCodeApi(id: string, data: CPTUpdateParams): Promise<CPTItem> {
+  return apiClient<CPTItem>(`/api/clinical/cpt/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteICD10CodeApi(id: string): Promise<{ message: string }> {
-  return apiClient<{ message: string }>(`/api/clinical/icd10/${id}`, {
+export async function deleteCPTCodeApi(id: string): Promise<{ message: string }> {
+  return apiClient<{ message: string }>(`/api/clinical/cpt/${id}`, {
     method: "DELETE",
   });
 }
 
-export async function restoreICD10CodeApi(id: string): Promise<{ message: string }> {
-  return apiClient<{ message: string }>(`/api/clinical/icd10/${id}/restore`, {
+export async function restoreCPTCodeApi(id: string): Promise<{ message: string }> {
+  return apiClient<{ message: string }>(`/api/clinical/cpt/${id}/restore`, {
     method: "POST",
   });
 }
 
-export async function uploadICD10ExcelApi(file: File): Promise<UploadICD10Response> {
+export async function uploadCPTExcelApi(file: File): Promise<UploadCPTResponse> {
   const formData = new FormData();
   formData.append("file", file);
 
-  return apiClient<UploadICD10Response>("/api/clinical/icd10/upload", {
+  return apiClient<UploadCPTResponse>("/api/clinical/cpt/upload", {
     method: "POST",
     body: formData,
   });

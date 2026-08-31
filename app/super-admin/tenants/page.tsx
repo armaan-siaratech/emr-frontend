@@ -292,11 +292,10 @@ export default function SuperAdminTenantsPage() {
             <div className="flex items-center rounded-2xl border border-[#DFE8E5] bg-[#FAFCFB] p-1 shadow-inner">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                  viewMode === "grid"
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${viewMode === "grid"
                     ? "bg-[#0F766E] text-white shadow-md shadow-teal-900/20"
                     : "text-[#596964] hover:text-[#0F766E]"
-                }`}
+                  }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
                 <span>Cards View</span>
@@ -304,11 +303,10 @@ export default function SuperAdminTenantsPage() {
 
               <button
                 onClick={() => setViewMode("table")}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                  viewMode === "table"
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${viewMode === "table"
                     ? "bg-[#0F766E] text-white shadow-md shadow-teal-900/20"
                     : "text-[#596964] hover:text-[#0F766E]"
-                }`}
+                  }`}
               >
                 <List className="w-3.5 h-3.5" />
                 <span>Table View</span>
@@ -366,13 +364,12 @@ export default function SuperAdminTenantsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25 }}
-                className={`relative group rounded-3xl border-2 p-5 shadow-[0_10px_25px_rgba(15,118,110,0.08)] hover:shadow-[0_20px_45px_rgba(15,118,110,0.22)] hover:-translate-y-1.5 transition-all duration-300 backdrop-blur-xl flex flex-col justify-between overflow-hidden ${
-                  t.status === "suspended"
+                className={`relative group rounded-3xl border-2 p-5 shadow-[0_10px_25px_rgba(15,118,110,0.08)] hover:shadow-[0_20px_45px_rgba(15,118,110,0.22)] hover:-translate-y-1.5 transition-all duration-300 backdrop-blur-xl flex flex-col justify-between overflow-hidden ${t.status === "suspended"
                     ? "bg-gradient-to-br from-rose-50/90 via-rose-100/30 to-white border-rose-300/80"
                     : t.status === "active"
-                    ? "bg-gradient-to-br from-teal-50/90 via-emerald-50/40 to-white border-[#7ee8d5]/70 hover:border-[#0f766e]"
-                    : "bg-gradient-to-br from-slate-50/90 via-slate-100/40 to-white border-slate-200"
-                }`}
+                      ? "bg-gradient-to-br from-teal-50/90 via-emerald-50/40 to-white border-[#7ee8d5]/70 hover:border-[#0f766e]"
+                      : "bg-gradient-to-br from-slate-50/90 via-slate-100/40 to-white border-slate-200"
+                  }`}
               >
                 {/* Ambient Top Card Glow */}
                 <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-[#7ee8d5]/30 blur-2xl group-hover:bg-[#0f766e]/20 transition-all duration-500" />
@@ -816,7 +813,7 @@ export default function SuperAdminTenantsPage() {
               </div>
 
               <h3 className="text-lg font-black text-[#132a26]">Suspend Tenant Organization</h3>
-              
+
               <p className="text-xs text-[#52615D] leading-relaxed">
                 Are you sure you want to suspend access for tenant{" "}
                 <span className="font-bold text-[#0F766E]">{selectedTenant.name}</span> (Code:{" "}

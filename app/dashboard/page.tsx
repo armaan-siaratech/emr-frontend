@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+
 import {
   Users,
   Stethoscope,
@@ -238,9 +241,19 @@ const activities = [
 ];
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
+  const { isSuperAdmin, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && isSuperAdmin) {
+      router.replace("/super-admin");
+    }
+  }, [isLoading, isSuperAdmin, router]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showQuickModal, setShowQuickModal] = useState(false);
+
 
   const handleRefresh = () => {
     setIsRefreshing(true);

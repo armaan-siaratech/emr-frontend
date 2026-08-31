@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSidebar } from "./SidebarContext";
 import { useAuth } from "@/hooks/useAuth";
-import { Bell, Search, User, ChevronDown, LogOut, Settings } from "lucide-react";
+import { Bell, Search, ChevronDown, LogOut, Settings, CheckCheck, ExternalLink } from "lucide-react";
+import {
+  getUnreadCountApi,
+  getNotificationsApi,
+  markAllNotificationsReadApi,
+  NotificationItem,
+} from "@/lib/api/notificationApi";
+import { getTicketWebSocketUrl } from "@/lib/api/ticketApi";
 
 export default function Navbar() {
   const { sidebarWidth, setMobileOpen } = useSidebar();
@@ -15,16 +22,75 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Live Tenant Notification Badge States
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState<boolean>(false);
+  const [recentNotifs, setRecentNotifs] = useState<NotificationItem[]>([]);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await getUnreadCountApi();
+      setUnreadCount(res.unread_count || 0);
+    } catch (_) {}
+  }, []);
+
+  const fetchRecentNotifs = useCallback(async () => {
+    try {
+      const res = await getNotificationsApi({ page: 1, page_size: 5 });
+      setRecentNotifs(res.items || []);
+      setUnreadCount(res.unread_count || 0);
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
+  // Live WebSocket listener for Tenant notifications
+  useEffect(() => {
+    const wsUrl = getTicketWebSocketUrl();
+    let socket: WebSocket | null = null;
+
+    try {
+      socket = new WebSocket(wsUrl);
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data?.type === "NEW_NOTIFICATION" || data?.type === "TICKET_UPDATED" || data?.type === "TICKET_CREATED") {
+            setUnreadCount((c) => c + 1);
+            fetchRecentNotifs();
+          }
+        } catch (_) {}
+      };
+    } catch (_) {}
+
+    return () => {
+      if (socket) socket.close();
+    };
+  }, [fetchRecentNotifs]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsReadApi();
+      setUnreadCount(0);
+      setRecentNotifs((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch (_) {}
+  };
+
   const handleLogout = async () => {
     await logout();
     router.push("/login");
   };
 
-  // Close dropdown on click outside
+  // Close dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -83,16 +149,87 @@ export default function Navbar() {
 
       {/* Right User & Notification Bar */}
       <div className="flex items-center gap-3 sm:gap-4">
-        {/* Notification Bell */}
-        <Link
-          href="/notifications"
-          className="group relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#bce0d5] bg-white text-[#4a6b63] transition-all duration-200 hover:bg-[#d9f0ea] hover:text-[#0f766e] shadow-xs"
-          title="Notifications"
-        >
-          <Bell className="h-4.5 w-4.5" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#ef4444] animate-ping" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#ef4444]" />
-        </Link>
+        {/* Notification Bell Button with Live Badge Count (1, 2, 3...) */}
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => {
+              setShowNotifDropdown(!showNotifDropdown);
+              if (!showNotifDropdown) fetchRecentNotifs();
+            }}
+            className="group relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#bce0d5] bg-white text-[#4a6b63] transition-all duration-200 hover:bg-[#d9f0ea] hover:text-[#0f766e] shadow-xs cursor-pointer"
+            title="Notifications"
+          >
+            <Bell className="h-4.5 w-4.5" />
+
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-black text-white shadow-sm animate-pulse">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Quick Notification Dropdown for Tenant Admin */}
+          {showNotifDropdown && (
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-teal-100 bg-white/95 shadow-2xl backdrop-blur-2xl z-50 p-4 space-y-3 font-sans">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-sm text-[#172522]">Tenant Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                      {unreadCount} Unread
+                    </span>
+                  )}
+                </div>
+
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="flex items-center gap-1 text-[10px] font-bold text-[#0f766e] hover:underline cursor-pointer"
+                  >
+                    <CheckCheck className="w-3 h-3" />
+                    <span>Mark all read</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                {recentNotifs.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400">
+                    No notifications yet.
+                  </div>
+                ) : (
+                  recentNotifs.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={`py-2.5 px-1 flex items-start justify-between gap-2 text-xs transition ${
+                        !notif.is_read ? "bg-teal-50/50 rounded-xl px-2 font-semibold" : ""
+                      }`}
+                    >
+                      <div>
+                        <p className="font-bold text-[#172522]">{notif.title}</p>
+                        <p className="text-[11px] text-slate-600 mt-0.5">{notif.message}</p>
+                        <span className="text-[9px] font-mono text-slate-400">
+                          {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="border-t border-slate-100 pt-2 text-center">
+                <Link
+                  href="/admin/support-tickets"
+                  onClick={() => setShowNotifDropdown(false)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#0f766e] hover:underline"
+                >
+                  <span>View Support Tickets</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Pill Dropdown Avatar */}
         <div className="relative" ref={menuRef}>
@@ -166,4 +303,3 @@ export default function Navbar() {
     </header>
   );
 }
-

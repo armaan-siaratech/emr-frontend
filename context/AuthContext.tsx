@@ -16,7 +16,7 @@ interface AuthContextType {
   loginByPin: (pin: string, email?: string) => Promise<AuthResponse>;
   verify2FALogin: (code: string, mfaToken?: string, email?: string, password?: string) => Promise<User>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: (isInitial?: boolean) => Promise<void>;
   clearError: () => void;
 }
 
@@ -57,9 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (isInitial: boolean = false) => {
     try {
-      setIsLoading(true);
+      if (isInitial) {
+        setIsLoading(true);
+      }
       const res = await getCurrentUserApi();
       if (res && res.user) {
         setUser(res.user);
@@ -74,17 +76,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       if (err?.status === 403 && typeof err?.message === "string" && (err.message.toLowerCase().includes("suspended") || err.message.toLowerCase().includes("restricted"))) {
         setIsSuspendedTenant(true);
-      } else {
+      } else if (err?.status === 401) {
+        setUser(null);
+      } else if (err?.status) {
         setUser(null);
       }
     } finally {
-      setIsLoading(false);
+      if (isInitial) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    refreshUser();
+    refreshUser(true);
   }, [refreshUser]);
+
 
   const login = useCallback(async (credentials: LoginCredentials): Promise<AuthResponse> => {
     setError(null);

@@ -21,7 +21,7 @@ export function middleware(request: NextRequest) {
   if (pathname === "/") {
     const search = request.nextUrl.search;
     if (isAuthenticated) {
-      return NextResponse.redirect(new URL(`/dashboard${search}`, request.url));
+      return NextResponse.next();
     }
     return NextResponse.redirect(new URL(`/login${search}`, request.url));
   }
@@ -31,10 +31,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // If authenticated user visits /login, redirect to /dashboard
+  // If authenticated user visits /login, redirect to / for role-based navigation
   if (isAuthenticated && pathname.startsWith("/login")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
+
 
   return NextResponse.next();
 }

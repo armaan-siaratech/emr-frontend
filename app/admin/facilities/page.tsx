@@ -321,6 +321,7 @@ export default function TenantFacilityUnitsPage() {
   // Active View & Edit Inspection Modals
   const [viewModalItem, setViewModalItem] = useState<{ type: string; title: string; details: Record<string, string> } | null>(null);
   const [deleteConfirmFacility, setDeleteConfirmFacility] = useState<FacilityItem | null>(null);
+  const [hierarchyTreeFacility, setHierarchyTreeFacility] = useState<FacilityItem | null>(null);
 
   // FORM STATES
   const [liveFacilityTypes, setLiveFacilityTypes] = useState<FacilityTypeItem[]>([]);
@@ -523,11 +524,19 @@ export default function TenantFacilityUnitsPage() {
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({});
   const [expandedRooms, setExpandedRooms] = useState<Record<string, boolean>>({});
   const [expandedBlockBreakdowns, setExpandedBlockBreakdowns] = useState<Record<string, boolean>>({});
+  const [expandedBlockFloors, setExpandedBlockFloors] = useState<Record<string, boolean>>({});
 
   const toggleBlockBreakdown = (facId: string) => {
     setExpandedBlockBreakdowns((prev) => ({
       ...prev,
       [facId]: !prev[facId],
+    }));
+  };
+
+  const toggleBlockFloorExpand = (floorId: string) => {
+    setExpandedBlockFloors((prev) => ({
+      ...prev,
+      [floorId]: !prev[floorId],
     }));
   };
 
@@ -1502,21 +1511,45 @@ export default function TenantFacilityUnitsPage() {
                   let bFloors = blk.floors.length;
                   let bRooms = 0;
                   let bBeds = 0;
-                  blk.floors.forEach((fl) => {
-                    fl.departments.forEach((dp) => {
-                      bRooms += dp.rooms.length;
+                  const floorsList = blk.floors.map((fl) => {
+                    let flRooms = 0;
+                    let flBeds = 0;
+                    const deptsList = fl.departments.map((dp) => {
+                      let dpBeds = 0;
                       dp.rooms.forEach((rm) => {
-                        bBeds += rm.beds.length;
+                        dpBeds += rm.beds.length;
                       });
+                      flRooms += dp.rooms.length;
+                      flBeds += dpBeds;
+                      return {
+                        id: dp.id,
+                        name: dp.name,
+                        code: dp.code,
+                        head: dp.head,
+                        rooms: dp.rooms,
+                        bedsCount: dpBeds,
+                      };
                     });
+                    bRooms += flRooms;
+                    bBeds += flBeds;
+                    return {
+                      id: fl.id,
+                      name: fl.name,
+                      code: fl.code,
+                      number: fl.number,
+                      departments: deptsList,
+                      roomsCount: flRooms,
+                      bedsCount: flBeds,
+                    };
                   });
                   return {
                     id: blk.id,
                     name: blk.name,
                     code: blk.code,
-                    floors: bFloors,
-                    rooms: bRooms,
-                    beds: bBeds,
+                    floorsCount: bFloors,
+                    roomsCount: bRooms,
+                    bedsCount: bBeds,
+                    floors: floorsList,
                   };
                 });
 
@@ -1567,6 +1600,14 @@ export default function TenantFacilityUnitsPage() {
 
                       <div className="flex items-center gap-1.5">
                         <button
+                          onClick={() => setHierarchyTreeFacility(fac)}
+                          className="p-2 rounded-xl bg-white border border-teal-200 text-[#0F766E] hover:bg-teal-50 transition cursor-pointer shadow-xs"
+                          title="View Hierarchy Tree Modal"
+                        >
+                          <Layers className="w-4 h-4" />
+                        </button>
+
+                        <button
                           onClick={() =>
                             setViewModalItem({
                               type: "Facility Master Overview",
@@ -1578,7 +1619,7 @@ export default function TenantFacilityUnitsPage() {
                                 Phone: fac.phone,
                                 Email: fac.email,
                                 "Total Capacity": `${fBlocks} Blocks • ${fFloors} Floors • ${fRooms} Rooms • ${fBeds} Beds`,
-                                "Per-Block Breakdown": blockStats.map((b) => `${b.name} (${b.code}): ${b.floors} Floors, ${b.rooms} Rooms, ${b.beds} Beds`).join(" | ") || "No blocks configured",
+                                "Per-Block Breakdown": blockStats.map((b) => `${b.name} (${b.code}): ${b.floorsCount} Floors (${b.floors.map((fl) => `${fl.name}: ${fl.roomsCount} Rm, ${fl.bedsCount} Bed`).join(", ")}), ${b.roomsCount} Rooms, ${b.bedsCount} Beds`).join(" | ") || "No blocks configured",
                                 "FHIR Endpoint": fac.fhirConfig.baseUrl,
                               },
                             })
@@ -1662,26 +1703,91 @@ export default function TenantFacilityUnitsPage() {
                       >
                         <span className="flex items-center gap-1.5">
                           <Building className="w-3.5 h-3.5 text-[#0F766E]" />
-                          <span>Block-by-Block Breakdown ({fac.blocks.length})</span>
+                          <span>Campus Blocks & Floor Breakdown ({fac.blocks.length})</span>
                         </span>
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedBlockBreakdowns[fac.id] ? "rotate-180" : ""}`} />
                       </button>
 
                       {expandedBlockBreakdowns[fac.id] && (
-                        <div className="space-y-1.5 p-2 rounded-2xl bg-white/95 border border-teal-200/90 shadow-sm animate-fade-in">
+                        <div className="space-y-2 p-2.5 rounded-2xl bg-white/95 border border-teal-200/90 shadow-sm animate-fade-in text-xs">
                           {blockStats.length === 0 ? (
                             <p className="text-[10px] text-slate-400 text-center py-1 font-bold">No campus blocks registered yet.</p>
                           ) : (
                             blockStats.map((bs) => (
-                              <div key={bs.id} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/70 text-[10px] font-bold">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded text-[9px] font-black">{bs.code}</span>
-                                  <span className="text-slate-800 font-extrabold truncate max-w-[130px]">{bs.name}</span>
+                              <div key={bs.id} className="rounded-xl border border-teal-200/80 bg-teal-50/30 p-2.5 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Building className="w-3.5 h-3.5 text-[#0F766E]" />
+                                    <span className="font-mono bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded text-[9px] font-black">{bs.code}</span>
+                                    <span className="text-slate-900 font-black text-[11px] truncate max-w-[130px]">{bs.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 font-mono text-[9px] font-bold">
+                                    <span className="bg-sky-100 text-sky-900 px-1.5 py-0.5 rounded border border-sky-200">{bs.floorsCount} Floors</span>
+                                    <span className="bg-purple-100 text-purple-900 px-1.5 py-0.5 rounded border border-purple-200">{bs.roomsCount} Rooms</span>
+                                    <span className="bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded border border-emerald-200">{bs.bedsCount} Beds</span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1 font-mono text-[9px]">
-                                  <span className="bg-sky-50 text-sky-800 px-1.5 py-0.5 rounded border border-sky-200">{bs.floors} Floors</span>
-                                  <span className="bg-purple-50 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200">{bs.rooms} Rooms</span>
-                                  <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200">{bs.beds} Beds</span>
+
+                                {/* Nested Floor Level List */}
+                                <div className="space-y-1 pl-2 border-l-2 border-teal-300">
+                                  {bs.floors.length === 0 ? (
+                                    <p className="text-[10px] text-slate-400 italic">No floors configured in {bs.name}.</p>
+                                  ) : (
+                                    bs.floors.map((fl) => (
+                                      <div key={fl.id} className="rounded-lg bg-white p-2 border border-slate-200/80 space-y-1">
+                                        <div className="flex items-center justify-between text-[10px]">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="h-4 w-4 rounded bg-sky-700 text-white flex items-center justify-center font-black text-[9px] shrink-0">
+                                              {fl.number}
+                                            </span>
+                                            <span className="font-extrabold text-slate-800">{fl.name}</span>
+                                            <span className="font-mono text-[9px] text-sky-800 bg-sky-50 px-1 py-0.5 rounded">{fl.code}</span>
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                                              {fl.roomsCount} Rooms • {fl.bedsCount} Beds
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => toggleBlockFloorExpand(fl.id)}
+                                              className="text-[#0F766E] font-bold hover:underline text-[9px] flex items-center gap-0.5 cursor-pointer"
+                                            >
+                                              <span>{expandedBlockFloors[fl.id] ? "Hide" : "Rooms"}</span>
+                                              <ChevronDown className={`w-3 h-3 transition-transform ${expandedBlockFloors[fl.id] ? "rotate-180" : ""}`} />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {expandedBlockFloors[fl.id] && (
+                                          <div className="mt-1 p-2 rounded bg-sky-50/60 border border-sky-100 space-y-1 animate-fade-in text-[9px]">
+                                            <p className="font-bold text-slate-700 border-b border-sky-200/60 pb-1">
+                                              {fl.departments.length} Departments on {fl.name}:
+                                            </p>
+                                            {fl.departments.length === 0 ? (
+                                              <p className="text-slate-400 italic">No departments listed.</p>
+                                            ) : (
+                                              fl.departments.map((dp) => (
+                                                <div key={dp.id} className="space-y-0.5">
+                                                  <div className="flex items-center justify-between font-extrabold text-indigo-900">
+                                                    <span>• {dp.name} ({dp.code})</span>
+                                                    <span>{dp.rooms.length} Rooms</span>
+                                                  </div>
+                                                  <div className="flex flex-wrap gap-1 pl-2">
+                                                    {dp.rooms.map((rm) => (
+                                                      <span key={rm.id} className="bg-purple-100 text-purple-900 px-1.5 py-0.5 rounded border border-purple-200 font-mono">
+                                                        Rm {rm.number} ({rm.beds.length} beds)
+                                                      </span>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              ))
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))
+                                  )}
                                 </div>
                               </div>
                             ))
@@ -1730,21 +1836,45 @@ export default function TenantFacilityUnitsPage() {
                         let bFloors = blk.floors.length;
                         let bRooms = 0;
                         let bBeds = 0;
-                        blk.floors.forEach((fl) => {
-                          fl.departments.forEach((dp) => {
-                            bRooms += dp.rooms.length;
+                        const floorsList = blk.floors.map((fl) => {
+                          let flRooms = 0;
+                          let flBeds = 0;
+                          const deptsList = fl.departments.map((dp) => {
+                            let dpBeds = 0;
                             dp.rooms.forEach((rm) => {
-                              bBeds += rm.beds.length;
+                              dpBeds += rm.beds.length;
                             });
+                            flRooms += dp.rooms.length;
+                            flBeds += dpBeds;
+                            return {
+                              id: dp.id,
+                              name: dp.name,
+                              code: dp.code,
+                              head: dp.head,
+                              rooms: dp.rooms,
+                              bedsCount: dpBeds,
+                            };
                           });
+                          bRooms += flRooms;
+                          bBeds += flBeds;
+                          return {
+                            id: fl.id,
+                            name: fl.name,
+                            code: fl.code,
+                            number: fl.number,
+                            departments: deptsList,
+                            roomsCount: flRooms,
+                            bedsCount: flBeds,
+                          };
                         });
                         return {
                           id: blk.id,
                           name: blk.name,
                           code: blk.code,
-                          floors: bFloors,
-                          rooms: bRooms,
-                          beds: bBeds,
+                          floorsCount: bFloors,
+                          roomsCount: bRooms,
+                          bedsCount: bBeds,
+                          floors: floorsList,
                         };
                       });
 
@@ -1793,19 +1923,30 @@ export default function TenantFacilityUnitsPage() {
                                 onClick={() => toggleBlockBreakdown(fac.id)}
                                 className="text-[10px] font-bold text-[#0F766E] hover:underline flex items-center gap-1 cursor-pointer mt-1"
                               >
-                                <span>See {fac.blocks.length} Blocks Breakdown</span>
+                                <span>See {fac.blocks.length} Blocks Hierarchy</span>
                                 <ChevronDown className={`w-3 h-3 transition-transform ${expandedBlockBreakdowns[fac.id] ? "rotate-180" : ""}`} />
                               </button>
 
                               {expandedBlockBreakdowns[fac.id] && (
-                                <div className="space-y-1.5 mt-1.5 p-2 rounded-xl bg-teal-50/90 border border-teal-200 shadow-sm max-w-xs animate-fade-in">
+                                <div className="space-y-2 mt-1.5 p-2 rounded-xl bg-teal-50/90 border border-teal-200 shadow-sm max-w-sm animate-fade-in text-[10px]">
                                   {blockStats.length === 0 ? (
                                     <p className="text-[9px] text-slate-400 font-bold">No blocks configured.</p>
                                   ) : (
                                     blockStats.map((bs) => (
-                                      <div key={bs.id} className="flex items-center justify-between text-[9px] font-bold text-slate-700 pb-1 border-b border-teal-100/70 last:border-0 last:pb-0">
-                                        <span className="truncate max-w-[90px] font-extrabold">{bs.name} ({bs.code}):</span>
-                                        <span className="font-mono text-teal-800">{bs.floors} Fl • {bs.rooms} Rm • {bs.beds} Bed</span>
+                                      <div key={bs.id} className="space-y-1 border-b border-teal-200/60 pb-1.5 last:border-0 last:pb-0">
+                                        <div className="flex items-center justify-between font-extrabold text-slate-800">
+                                          <span className="truncate max-w-[120px]">🏢 {bs.name} ({bs.code}):</span>
+                                          <span className="font-mono text-teal-800">{bs.floorsCount} Fl • {bs.roomsCount} Rm • {bs.bedsCount} Bed</span>
+                                        </div>
+                                        {/* Floor breakdown inside block */}
+                                        <div className="pl-2 space-y-0.5 border-l-2 border-teal-400">
+                                          {bs.floors.map((fl) => (
+                                            <div key={fl.id} className="flex items-center justify-between text-[9px] text-slate-600 bg-white/80 px-1.5 py-0.5 rounded border border-slate-200">
+                                              <span className="font-semibold truncate max-w-[110px]">🚪 {fl.name} ({fl.code})</span>
+                                              <span className="font-mono font-bold text-sky-800">{fl.roomsCount} Rm • {fl.bedsCount} Bed</span>
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
                                     ))
                                   )}
@@ -1838,6 +1979,13 @@ export default function TenantFacilityUnitsPage() {
                           <td className="py-4 px-6 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button
+                                onClick={() => setHierarchyTreeFacility(fac)}
+                                className="p-2 rounded-xl bg-white border border-teal-200 text-[#0F766E] hover:bg-teal-50 transition cursor-pointer shadow-xs"
+                                title="View Hierarchy Tree Modal"
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                              </button>
+                              <button
                                 onClick={() =>
                                   setViewModalItem({
                                     type: "Facility Overview",
@@ -1849,7 +1997,7 @@ export default function TenantFacilityUnitsPage() {
                                       Phone: fac.phone,
                                       Email: fac.email,
                                       "Total Capacity": `${fBlocks} Blocks • ${fFloors} Floors • ${fRooms} Rooms • ${fBeds} Beds`,
-                                      "Per-Block Breakdown": blockStats.map((b) => `${b.name} (${b.code}): ${b.floors} Floors, ${b.rooms} Rooms, ${b.beds} Beds`).join(" | ") || "No blocks configured",
+                                      "Per-Block Breakdown": blockStats.map((b) => `${b.name} (${b.code}): ${b.floorsCount} Floors (${b.floors.map((fl) => `${fl.name}: ${fl.roomsCount} Rm, ${fl.bedsCount} Bed`).join(", ")}), ${b.roomsCount} Rooms, ${b.bedsCount} Beds`).join(" | ") || "No blocks configured",
                                       "FHIR Endpoint": fac.fhirConfig.baseUrl,
                                     },
                                   })
@@ -4385,6 +4533,154 @@ export default function TenantFacilityUnitsPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* HIERARCHY TREE MODAL FOR FACILITY LIST */}
+      <AnimatePresence>
+        {hierarchyTreeFacility && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-[#0c2420]/50 backdrop-blur-md"
+              onClick={() => setHierarchyTreeFacility(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative max-w-2xl w-full max-h-[85vh] rounded-3xl border-2 border-teal-300 bg-white p-6 shadow-2xl backdrop-blur-3xl flex flex-col space-y-4 my-auto z-10 overflow-hidden"
+            >
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-[#0F766E] text-white flex items-center justify-center font-black">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      {hierarchyTreeFacility.name} ({hierarchyTreeFacility.code})
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Complete Campus Infrastructure Hierarchy (Blocks ➔ Floors ➔ Rooms ➔ Beds)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setHierarchyTreeFacility(null)}
+                  className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto pr-1 space-y-3 flex-1 text-xs">
+                {hierarchyTreeFacility.blocks.length === 0 ? (
+                  <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <Building className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="font-bold text-slate-700">No Campus Blocks configured yet.</p>
+                  </div>
+                ) : (
+                  hierarchyTreeFacility.blocks.map((blk) => (
+                    <div key={blk.id} className="rounded-2xl border-2 border-teal-200 bg-teal-50/30 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Building className="w-4 h-4 text-[#0F766E]" />
+                          <h4 className="font-black text-slate-900 text-sm">{blk.name}</h4>
+                          <span className="font-mono text-[10px] bg-teal-100 text-teal-800 px-2 py-0.5 rounded font-black">
+                            {blk.code}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-extrabold bg-teal-700 text-white px-2.5 py-0.5 rounded-full">
+                          {blk.floors.length} Floors
+                        </span>
+                      </div>
+
+                      {/* Floors under this Block */}
+                      <div className="pl-3 space-y-2 border-l-2 border-teal-400">
+                        {blk.floors.length === 0 ? (
+                          <p className="text-[11px] text-slate-400 italic">No floors created in {blk.name}.</p>
+                        ) : (
+                          blk.floors.map((fl) => (
+                            <div key={fl.id} className="rounded-xl bg-white p-3 border border-sky-200 space-y-2 shadow-xs">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="h-5 w-5 rounded-lg bg-sky-700 text-white flex items-center justify-center font-black text-xs">
+                                    {fl.number}
+                                  </span>
+                                  <h5 className="font-extrabold text-slate-900">{fl.name}</h5>
+                                  <span className="font-mono text-[9px] text-sky-800 bg-sky-50 px-1.5 py-0.5 rounded font-bold">
+                                    {fl.code}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                                  <span className="bg-indigo-50 text-indigo-800 px-2 py-0.5 rounded border border-indigo-200 font-bold">
+                                    {fl.departments.length} Depts
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Departments & Rooms under this floor */}
+                              <div className="pl-2 space-y-1.5 border-l-2 border-sky-300 text-[11px]">
+                                {fl.departments.map((dp) => (
+                                  <div key={dp.id} className="p-2 rounded-lg bg-indigo-50/40 border border-indigo-100 space-y-1">
+                                    <div className="flex items-center justify-between font-bold text-indigo-950">
+                                      <span>📍 Dept: {dp.name} ({dp.code})</span>
+                                      <span className="text-[10px] text-slate-500 font-medium">Head: {dp.head}</span>
+                                    </div>
+
+                                    {/* Rooms list */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                                      {dp.rooms.map((rm) => (
+                                        <div key={rm.id} className="p-1.5 rounded-md bg-white border border-purple-200 space-y-0.5">
+                                          <div className="flex items-center justify-between text-[10px] font-extrabold text-purple-900">
+                                            <span>Door {rm.number} - {rm.name}</span>
+                                            <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[8px]">{rm.type}</span>
+                                          </div>
+
+                                          {/* Beds list inside Room */}
+                                          <div className="flex flex-wrap gap-1 pt-0.5">
+                                            {rm.beds.map((bd) => (
+                                              <span
+                                                key={bd.id}
+                                                className={`text-[8px] font-mono font-black px-1.5 py-0.5 rounded border ${
+                                                  bd.status === "Occupied"
+                                                    ? "bg-amber-100 text-amber-900 border-amber-300"
+                                                    : bd.status === "Maintenance"
+                                                    ? "bg-rose-100 text-rose-900 border-rose-300"
+                                                    : "bg-emerald-100 text-emerald-900 border-emerald-300"
+                                                }`}
+                                              >
+                                                Bed {bd.code} ({bd.status})
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="pt-3 border-t flex justify-end">
+                <button
+                  onClick={() => setHierarchyTreeFacility(null)}
+                  className="px-5 py-2 rounded-xl bg-[#0F766E] text-white font-black text-xs hover:bg-[#0B625C] shadow-md transition cursor-pointer"
+                >
+                  Close Hierarchy View
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

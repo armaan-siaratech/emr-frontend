@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTenantsApi, TenantItem } from "@/lib/api/authApi";
@@ -44,7 +44,16 @@ export default function SuperAdminTenantsPage() {
 
   // Filter & Search
   const [search, setSearch] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [filter, setFilter] = useState<string>("All");
+
+  // Smooth Search Debouncing (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Pagination State
   const [page, setPage] = useState<number>(1);
@@ -125,18 +134,22 @@ export default function SuperAdminTenantsPage() {
     }
   };
 
-  // Filtered tenants list
-  const filteredTenants = tenants.filter((tenant) => {
-    const matchesSearch =
-      tenant.name.toLowerCase().includes(search.toLowerCase()) ||
-      tenant.code.toLowerCase().includes(search.toLowerCase()) ||
-      tenant.slug.toLowerCase().includes(search.toLowerCase()) ||
-      (tenant.city && tenant.city.toLowerCase().includes(search.toLowerCase()));
+  // Filtered tenants list with smooth memoization
+  const filteredTenants = useMemo(() => {
+    const query = debouncedSearch.toLowerCase().trim();
+    return tenants.filter((tenant) => {
+      const matchesSearch =
+        !query ||
+        tenant.name.toLowerCase().includes(query) ||
+        tenant.code.toLowerCase().includes(query) ||
+        tenant.slug.toLowerCase().includes(query) ||
+        (tenant.city && tenant.city.toLowerCase().includes(query));
 
-    const matchesFilter = filter === "All" || tenant.status.toLowerCase() === filter.toLowerCase();
+      const matchesFilter = filter === "All" || tenant.status.toLowerCase() === filter.toLowerCase();
 
-    return matchesSearch && matchesFilter;
-  });
+      return matchesSearch && matchesFilter;
+    });
+  }, [tenants, debouncedSearch, filter]);
 
   const totalPages = Math.ceil(filteredTenants.length / pageSize) || 1;
   const paginatedTenants = filteredTenants.slice((page - 1) * pageSize, page * pageSize);

@@ -113,6 +113,7 @@ export async function getPatientsApi(params?: {
   facility_id?: string;
   status?: string;
   gender?: string;
+  include_deleted?: boolean;
   page?: number;
   page_size?: number;
 }): Promise<PatientListResponse> {
@@ -121,6 +122,7 @@ export async function getPatientsApi(params?: {
   if (params?.facility_id) query.append("facility_id", params.facility_id);
   if (params?.status && params.status !== "All Status") query.append("status", params.status);
   if (params?.gender && params.gender !== "All Gender") query.append("gender", params.gender);
+  if (params?.include_deleted || params?.status === "Soft-Deleted") query.append("include_deleted", "true");
   if (params?.page) query.append("page", String(params.page));
   if (params?.page_size) query.append("page_size", String(params.page_size));
 
@@ -160,5 +162,11 @@ export async function updatePatientApi(id: string, data: PatientUpdateParams): P
 export async function deletePatientApi(id: string): Promise<{ message: string; id: string }> {
   return apiClient<{ message: string; id: string }>(`/api/patients/${id}`, {
     method: "DELETE",
+  });
+}
+
+export async function restorePatientApi(id: string): Promise<PatientItem> {
+  return apiClient<PatientItem>(`/api/patients/${id}/restore`, {
+    method: "POST",
   });
 }

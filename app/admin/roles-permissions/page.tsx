@@ -1,623 +1,724 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ShieldCheck,
+  Plus,
+  Search,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  Users,
+  Shield,
+  Star,
+  Lock,
+  Edit,
+  Trash2,
+  Save,
+  RotateCcw,
+  Check,
+  X,
+  ChevronRight,
+  UserCheck,
+  Stethoscope,
+  Activity,
+  CalendarClock,
+  DollarSign,
+  Building,
+  Layers,
+  Zap,
+} from "lucide-react";
 
-const roles = [
+export type RoleType = "SYSTEM_STANDARD" | "CUSTOM_TENANT";
+
+export interface TenantRoleItem {
+  id: string;
+  key: string;
+  name: string;
+  roleType: RoleType;
+  description: string;
+  userCount: number;
+  colorBg: string;
+  icon: any;
+  permissions: Record<string, boolean>;
+}
+
+export interface PermissionCategory {
+  category: string;
+  icon: any;
+  description: string;
+  items: { key: string; label: string; desc: string }[];
+}
+
+const permissionCategories: PermissionCategory[] = [
   {
-    name: "Administrator",
-    key: "administrator",
-    description: "Full access to organization and system settings.",
-    users: 4,
-    color: "teal",
+    category: "Patient Management & Charting",
+    icon: UserCheck,
+    description: "Access control for patient registry, profile details, and soft-delete/restore operations.",
+    items: [
+      { key: "patient:view", label: "View Patient Directory", desc: "Allows viewing patient list and demographic summary" },
+      { key: "patient:create", label: "Create Patient Profile", desc: "Allows registering new patient charts" },
+      { key: "patient:edit", label: "Edit Patient Profile", desc: "Allows updating demographics, contact, and insurance info" },
+      { key: "patient:soft_delete", label: "Soft Delete Patient", desc: "Allows flagging patient record as soft-deleted" },
+      { key: "patient:restore", label: "Restore Deleted Record", desc: "Allows un-deleting and restoring patient records" },
+      { key: "patient:export", label: "Export EMR Record", desc: "Allows exporting patient chart PDF and clinical summaries" },
+    ],
   },
   {
-    name: "Doctor",
-    key: "doctor",
-    description: "Clinical access for physicians and providers.",
-    users: 38,
-    color: "blue",
+    category: "Appointment & Telehealth Scheduling",
+    icon: CalendarClock,
+    description: "Access control for booking appointments, overbooking rights, and virtual consultation rooms.",
+    items: [
+      { key: "appointment:view", label: "View Appointment Calendar", desc: "Allows viewing facility booking schedules" },
+      { key: "appointment:create", label: "Book Appointments", desc: "Allows scheduling new patient visits" },
+      { key: "appointment:edit", label: "Reschedule / Cancel Visit", desc: "Allows editing or cancelling existing appointments" },
+      { key: "appointment:overbook", label: "Overbooking Clearance", desc: "Allows booking visits outside standard slot hours" },
+      { key: "telehealth:access", label: "Telehealth Room Access", desc: "Allows launching video consultation rooms" },
+    ],
   },
   {
-    name: "Nurse",
-    key: "nurse",
-    description: "Clinical and patient-care access.",
-    users: 64,
-    color: "purple",
+    category: "Clinical Encounters & Prescribing (EMR)",
+    icon: Stethoscope,
+    description: "Access control for clinical SOAP notes, ICD-10 diagnoses, lab orders, and controlled prescriptions.",
+    items: [
+      { key: "encounter:view", label: "View Clinical Encounters", desc: "Allows reading physician clinical notes and vitals" },
+      { key: "encounter:create", label: "Start Clinical Encounter", desc: "Allows creating SOAP notes and recording vitals" },
+      { key: "encounter:sign", label: "Sign & Finalize Encounter", desc: "Allows lock-signing completed clinical encounters" },
+      { key: "rx:prescribe", label: "Prescribe Medications", desc: "Allows generating electronic prescriptions (e-Rx)" },
+      { key: "rx:controlled", label: "Prescribe Controlled Drugs", desc: "Allows DEA Schedule II-V controlled substance prescribing" },
+      { key: "lab:order", label: "Order Lab & Diagnostic Tests", desc: "Allows placing lab orders and reviewing lab results" },
+    ],
   },
   {
-    name: "Receptionist",
-    key: "receptionist",
-    description: "Front desk and appointment management.",
-    users: 21,
-    color: "orange",
+    category: "Billing, Claims & Financial Coding",
+    icon: DollarSign,
+    description: "Access control for superfills, CPT/ICD coding, insurance claims, and payment receipts.",
+    items: [
+      { key: "billing:view", label: "View Financial Billing", desc: "Allows reading claims history and patient balances" },
+      { key: "billing:create_invoice", label: "Generate Invoices & Superbills", desc: "Allows creating encounter invoices" },
+      { key: "billing:submit_claim", label: "Submit Claims to Clearinghouse", desc: "Allows sending EDI 837 claims" },
+      { key: "billing:payment", label: "Process Payments & Refunds", desc: "Allows recording co-pays and processing card payments" },
+      { key: "billing:report", label: "View Revenue & Financial Reports", desc: "Allows viewing financial analytics dashboards" },
+    ],
   },
   {
-    name: "Billing Staff",
-    key: "billing",
-    description: "Billing, invoices and payment management.",
-    users: 15,
-    color: "green",
+    category: "Facility Administration & User Control",
+    icon: Building,
+    description: "Access control for tenant user onboarding, facility unit configuration, and audit logs.",
+    items: [
+      { key: "admin:view_users", label: "View Staff User Directory", desc: "Allows viewing list of clinic employees and providers" },
+      { key: "admin:create_users", label: "Onboard Staff Members", desc: "Allows adding doctors, nurses, schedulers" },
+      { key: "admin:manage_roles", label: "Manage Roles & Permissions", desc: "Allows configuring role matrix for tenant" },
+      { key: "admin:facilities", label: "Configure Facility Units", desc: "Allows adding/editing clinic branches and wards" },
+      { key: "admin:audit_logs", label: "View Security Audit Logs", desc: "Allows inspecting system security access logs" },
+    ],
   },
 ];
 
-const permissionGroups = [
+const defaultRolesList: TenantRoleItem[] = [
   {
-    title: "Patients",
-    permissions: [
-      "View patients",
-      "Create patients",
-      "Edit patients",
-      "Delete patients",
-    ],
+    id: "role-doctor",
+    key: "doctor",
+    name: "Doctor / Provider",
+    roleType: "SYSTEM_STANDARD",
+    description: "Full clinical privileges, encounter signing, Rx prescribing, and patient EMR charting.",
+    userCount: 14,
+    colorBg: "from-[#0F766E] to-[#115e59]",
+    icon: Stethoscope,
+    permissions: {
+      "patient:view": true,
+      "patient:create": true,
+      "patient:edit": true,
+      "patient:export": true,
+      "appointment:view": true,
+      "appointment:create": true,
+      "appointment:edit": true,
+      "telehealth:access": true,
+      "encounter:view": true,
+      "encounter:create": true,
+      "encounter:sign": true,
+      "rx:prescribe": true,
+      "rx:controlled": true,
+      "lab:order": true,
+      "billing:view": true,
+    },
   },
   {
-    title: "Appointments",
-    permissions: [
-      "View appointments",
-      "Create appointments",
-      "Edit appointments",
-      "Cancel appointments",
-    ],
+    id: "role-nurse",
+    key: "nurse",
+    name: "Clinical Nurse",
+    roleType: "SYSTEM_STANDARD",
+    description: "Patient triage, vital signs recording, medication administration, and encounter draft preparation.",
+    userCount: 18,
+    colorBg: "from-blue-600 to-indigo-700",
+    icon: Activity,
+    permissions: {
+      "patient:view": true,
+      "patient:create": true,
+      "patient:edit": true,
+      "appointment:view": true,
+      "appointment:create": true,
+      "encounter:view": true,
+      "encounter:create": true,
+      "lab:order": true,
+    },
   },
   {
-    title: "Clinical",
-    permissions: [
-      "View clinical records",
-      "Create clinical notes",
-      "Edit clinical notes",
-      "Manage medications",
-    ],
+    id: "role-scheduler",
+    key: "receptionist",
+    name: "Scheduler / Front Desk",
+    roleType: "SYSTEM_STANDARD",
+    description: "Patient check-in, appointment scheduling, overbooking management, and demographic registration.",
+    userCount: 8,
+    colorBg: "from-amber-600 to-orange-600",
+    icon: CalendarClock,
+    permissions: {
+      "patient:view": true,
+      "patient:create": true,
+      "patient:edit": true,
+      "appointment:view": true,
+      "appointment:create": true,
+      "appointment:edit": true,
+      "appointment:overbook": true,
+      "billing:payment": true,
+    },
   },
   {
-    title: "Administration",
-    permissions: [
-      "View users",
-      "Create users",
-      "Manage roles",
-      "System settings",
-    ],
+    id: "role-billing",
+    key: "billing",
+    name: "Billing Specialist",
+    roleType: "SYSTEM_STANDARD",
+    description: "EDI claims submission, CPT/ICD coding review, payment collection, and financial reporting.",
+    userCount: 6,
+    colorBg: "from-purple-600 to-indigo-800",
+    icon: DollarSign,
+    permissions: {
+      "patient:view": true,
+      "appointment:view": true,
+      "billing:view": true,
+      "billing:create_invoice": true,
+      "billing:submit_claim": true,
+      "billing:payment": true,
+      "billing:report": true,
+    },
   },
   {
-    title: "Financial",
-    permissions: [
-      "View billing",
-      "Create invoices",
-      "Process payments",
-      "View financial reports",
-    ],
+    id: "role-[#custom-cmo]",
+    key: "custom_cmo",
+    name: "Chief Medical Officer (CMO)",
+    roleType: "CUSTOM_TENANT",
+    description: "Custom role created by Tenant Admin with full clinical audit, quality reports, and administrative oversight.",
+    userCount: 2,
+    colorBg: "from-emerald-700 to-teal-800",
+    icon: Star,
+    permissions: {
+      "patient:view": true,
+      "patient:export": true,
+      "appointment:view": true,
+      "telehealth:access": true,
+      "encounter:view": true,
+      "encounter:sign": true,
+      "lab:order": true,
+      "billing:view": true,
+      "billing:report": true,
+      "admin:view_users": true,
+      "admin:audit_logs": true,
+    },
   },
 ];
 
 export default function RolesPermissionsPage() {
-  const [selectedRole, setSelectedRole] = useState("administrator");
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({
-    "View patients": true,
-    "Create patients": true,
-    "Edit patients": true,
-    "Delete patients": true,
+  const [rolesList, setRolesList] = useState<TenantRoleItem[]>(defaultRolesList);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("role-doctor");
 
-    "View appointments": true,
-    "Create appointments": true,
-    "Edit appointments": true,
-    "Cancel appointments": true,
+  // Filter & Search inside Matrix
+  const [searchMatrix, setSearchMatrix] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-    "View clinical records": true,
-    "Create clinical notes": true,
-    "Edit clinical notes": true,
-    "Manage medications": true,
+  // New Custom Role Modal State
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDesc, setNewRoleDesc] = useState("");
+  const [templateRoleId, setTemplateRoleId] = useState("role-doctor");
 
-    "View users": true,
-    "Create users": true,
-    "Manage roles": true,
-    "System settings": true,
+  const selectedRole = useMemo(() => {
+    return rolesList.find((r) => r.id === selectedRoleId) || rolesList[0];
+  }, [rolesList, selectedRoleId]);
 
-    "View billing": true,
-    "Create invoices": true,
-    "Process payments": true,
-    "View financial reports": true,
-  });
-
-  const role = roles.find((item) => item.key === selectedRole);
-
-  const togglePermission = (permission: string) => {
-    setPermissions((current) => ({
-      ...current,
-      [permission]: !current[permission],
-    }));
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const togglePermission = (permKey: string) => {
+    setRolesList((prev) =>
+      prev.map((role) => {
+        if (role.id === selectedRoleId) {
+          const currentVal = !!role.permissions[permKey];
+          return {
+            ...role,
+            permissions: {
+              ...role.permissions,
+              [permKey]: !currentVal,
+            },
+          };
+        }
+        return role;
+      })
+    );
+  };
+
+  const toggleCategoryGroup = (catItems: { key: string }[], enableAll: boolean) => {
+    setRolesList((prev) =>
+      prev.map((role) => {
+        if (role.id === selectedRoleId) {
+          const updatedPerms = { ...role.permissions };
+          catItems.forEach((item) => {
+            updatedPerms[item.key] = enableAll;
+          });
+          return {
+            ...role,
+            permissions: updatedPerms,
+          };
+        }
+        return role;
+      })
+    );
+  };
+
+  const handleCreateCustomRole = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoleName.trim()) return;
+
+    const templateRole = rolesList.find((r) => r.id === templateRoleId) || rolesList[0];
+
+    const newRole: TenantRoleItem = {
+      id: `role-custom-${Date.now()}`,
+      key: newRoleName.toLowerCase().replace(/\s+/g, "_"),
+      name: newRoleName.trim(),
+      roleType: "CUSTOM_TENANT",
+      description: newRoleDesc.trim() || "Custom tenant role configured by Tenant Admin.",
+      userCount: 0,
+      colorBg: "from-[#0F766E] via-teal-700 to-[#0c4f4a]",
+      icon: Star,
+      permissions: { ...templateRole.permissions },
+    };
+
+    setRolesList((prev) => [...prev, newRole]);
+    setSelectedRoleId(newRole.id);
+    setShowCreateModal(false);
+    setNewRoleName("");
+    setNewRoleDesc("");
+    showToast(`Custom Role '${newRole.name}' created successfully!`);
+  };
+
+  const handleDeleteCustomRole = (roleId: string, roleName: string) => {
+    setRolesList((prev) => prev.filter((r) => r.id !== roleId));
+    setSelectedRoleId("role-doctor");
+    showToast(`Custom Role '${roleName}' deleted.`);
+  };
+
+  // Counts
+  const totalRoles = rolesList.length;
+  const systemRolesCount = rolesList.filter((r) => r.roleType === "SYSTEM_STANDARD").length;
+  const customRolesCount = rolesList.filter((r) => r.roleType === "CUSTOM_TENANT").length;
+  const activePermsCount = Object.values(selectedRole.permissions).filter(Boolean).length;
+
   return (
-    <div className="mx-auto max-w-[1550px]">
+    <div className="w-full space-y-6 font-sans pb-24">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border-2 border-[#7ee8d5]/80 bg-[#0c2420]/95 px-5 py-3.5 text-xs font-bold text-teal-200 shadow-[0_15px_40px_rgba(15,118,110,0.4)] backdrop-blur-xl"
+          >
+            <CheckCircle2 className="w-5 h-5 text-teal-400" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* HEADER */}
-      <div className="mb-6 flex items-end justify-between">
+      {/* 3D GLASS COMMAND HEADER */}
+      <div className="relative overflow-hidden rounded-3xl border-2 border-[#7ee8d5]/70 bg-gradient-to-r from-[#0F766E] via-[#115e59] to-[#0c4f4a] p-6 sm:p-7 shadow-[0_20px_50px_rgba(15,118,110,0.25)] text-white backdrop-blur-3xl">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#7ee8d5]/25 blur-3xl" />
 
-        <div>
-
-          <div className="mb-2 flex items-center gap-2 text-[9px]">
-
-            <Link
-              href="/admin"
-              className="font-semibold text-[#0f766e] hover:underline"
-            >
-              Administration
-            </Link>
-
-            <span className="text-[#b2bcb8]">/</span>
-
-            <span className="text-[#8d9995]">
-              Roles & Permissions
-            </span>
-
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-teal-200 text-xs font-bold uppercase tracking-wider">
+              <Link href="/admin" className="hover:text-white transition">Admin</Link>
+              <span>/</span>
+              <span className="text-white font-black">Access Control (RBAC)</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2 mt-1">
+              <ShieldCheck className="w-6 h-6 text-teal-300 animate-pulse" />
+              Tenant Roles & Permissions Matrix
+            </h1>
+            <p className="text-xs text-teal-100/90 mt-1 font-medium">
+              Configure system base roles & create custom tenant-specific roles with feature-level access controls.
+            </p>
           </div>
 
-          <h1 className="text-[25px] font-semibold tracking-[-0.035em] text-[#172522]">
-            Roles & Permissions
-          </h1>
-
-          <p className="mt-1.5 text-[10px] text-[#8a9793]">
-            Control what each user role can access across the healthcare system.
-          </p>
-
-        </div>
-
-        <div className="flex items-center gap-2">
-
-          <button className="rounded-[9px] border border-[#e1e9e5] bg-white px-4 py-2.5 text-[9px] font-semibold text-[#697772] hover:bg-[#f7faf9]">
-            Reset Changes
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-xs font-black text-[#0F766E] shadow-xl hover:bg-teal-50 hover:shadow-2xl transition cursor-pointer active:scale-95 self-start md:self-auto"
+          >
+            <Plus className="w-4 h-4 text-[#0F766E]" />
+            <span>Create Custom Tenant Role</span>
           </button>
-
-          <button className="rounded-[9px] bg-[#0f766e] px-5 py-2.5 text-[9px] font-semibold text-white shadow-[0_5px_15px_rgba(15,118,110,0.15)] hover:bg-[#0b665f]">
-            Save Changes
-          </button>
-
         </div>
-
       </div>
 
-      {/* MAIN */}
-      <div className="grid grid-cols-[280px_1fr] gap-5">
+      {/* STAT SUMMARY CHIPS */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/95 p-4 shadow-[0_15px_40px_rgba(15,118,110,0.08)] backdrop-blur-3xl flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-[#63827a] block uppercase tracking-wider">Total Roles</span>
+            <span className="text-2xl font-black text-[#0F766E] mt-0.5 block font-mono">{totalRoles}</span>
+          </div>
+          <div className="h-10 w-10 rounded-2xl bg-teal-50 flex items-center justify-center text-[#0F766E]">
+            <Shield className="w-5 h-5" />
+          </div>
+        </div>
 
-        {/* ROLE SIDEBAR */}
-        <aside className="h-fit overflow-hidden rounded-[17px] border border-[#e4ebe8] bg-white shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
+        <div className="rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/95 p-4 shadow-[0_15px_40px_rgba(15,118,110,0.08)] backdrop-blur-3xl flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-[#63827a] block uppercase tracking-wider">System Base Roles</span>
+            <span className="text-2xl font-black text-teal-700 mt-0.5 block font-mono">{systemRolesCount}</span>
+          </div>
+          <div className="h-10 w-10 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-700">
+            <Lock className="w-5 h-5" />
+          </div>
+        </div>
 
-          <div className="border-b border-[#edf2f0] px-5 py-4">
+        <div className="rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/95 p-4 shadow-[0_15px_40px_rgba(15,118,110,0.08)] backdrop-blur-3xl flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-[#63827a] block uppercase tracking-wider">Custom Tenant Roles</span>
+            <span className="text-2xl font-black text-amber-700 mt-0.5 block font-mono">{customRolesCount}</span>
+          </div>
+          <div className="h-10 w-10 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-700">
+            <Star className="w-5 h-5" />
+          </div>
+        </div>
 
-            <p className="text-[11px] font-semibold text-[#52615c]">
-              User Roles
-            </p>
+        <div className="rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/95 p-4 shadow-[0_15px_40px_rgba(15,118,110,0.08)] backdrop-blur-3xl flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-[#63827a] block uppercase tracking-wider">Active Permissions</span>
+            <span className="text-2xl font-black text-emerald-700 mt-0.5 block font-mono">{activePermsCount} / 26</span>
+          </div>
+          <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-700">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
 
-            <p className="mt-1 text-[8px] text-[#9aa5a1]">
-              Select a role to manage permissions.
-            </p>
-
+      {/* MAIN TWO-COLUMN LAYOUT: ROLES LIST (LEFT) + PERMISSIONS MATRIX (RIGHT) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: ROLES NAVIGATION SIDEBAR (4 COLS) */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-xs font-black text-[#172522] uppercase tracking-wider">
+              Tenant Role Catalog
+            </span>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="text-[11px] font-black text-[#0F766E] hover:underline flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Role</span>
+            </button>
           </div>
 
-          <div className="p-2.5">
-
-            {roles.map((item) => {
-
-              const active = selectedRole === item.key;
+          <div className="space-y-3">
+            {rolesList.map((role) => {
+              const RoleIcon = role.icon;
+              const isSelected = selectedRoleId === role.id;
+              const isCustom = role.roleType === "CUSTOM_TENANT";
 
               return (
-                <button
-                  key={item.key}
-                  onClick={() => setSelectedRole(item.key)}
-                  className={`mb-1.5 w-full rounded-[11px] p-3 text-left transition last:mb-0 ${
-                    active
-                      ? "bg-[#eaf6f2]"
-                      : "hover:bg-[#f8faf9]"
+                <div
+                  key={role.id}
+                  onClick={() => setSelectedRoleId(role.id)}
+                  className={`relative overflow-hidden rounded-3xl border-2 p-4 cursor-pointer transition-all duration-300 backdrop-blur-2xl ${
+                    isSelected
+                      ? "border-[#0F766E] bg-white shadow-[0_10px_30px_rgba(15,118,110,0.15)] -translate-y-0.5 ring-4 ring-[#0F766E]/15"
+                      : "border-[#DFE8E5] bg-white/80 hover:border-[#7ee8d5] hover:bg-white"
                   }`}
                 >
-
-                  <div className="flex items-center gap-3">
-
-                    <RoleIcon
-                      color={item.color}
-                      active={active}
-                    />
-
-                    <div className="min-w-0 flex-1">
-
-                      <div className="flex items-center justify-between">
-
-                        <p
-                          className={`text-[9px] font-semibold ${
-                            active
-                              ? "text-[#0f766e]"
-                              : "text-[#596963]"
-                          }`}
-                        >
-                          {item.name}
-                        </p>
-
-                        <span
-                          className={`rounded-full px-1.5 py-0.5 text-[6px] font-semibold ${
-                            active
-                              ? "bg-white text-[#0f766e]"
-                              : "bg-[#f0f3f2] text-[#899590]"
-                          }`}
-                        >
-                          {item.users}
-                        </span>
-
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br ${role.colorBg} text-white flex items-center justify-center shadow-md`}>
+                        <RoleIcon className="w-5 h-5" />
                       </div>
-
-                      <p className="mt-1 line-clamp-2 text-[7px] leading-3.5 text-[#9aa5a1]">
-                        {item.description}
-                      </p>
-
+                      <div>
+                        <h3 className="text-sm font-black text-[#172522] flex items-center gap-1.5">
+                          <span>{role.name}</span>
+                          {isCustom && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {isCustom ? (
+                            <span className="text-[9px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg">
+                              ⭐ Custom Tenant Role
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-mono font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-lg">
+                              🛡️ System Base Role
+                            </span>
+                          )}
+                          <span className="text-[10px] text-[#63827a] font-bold">{role.userCount} users</span>
+                        </div>
+                      </div>
                     </div>
 
+                    {isSelected && (
+                      <span className="h-6 w-6 rounded-full bg-[#0F766E] text-white flex items-center justify-center text-xs font-black shadow-xs">
+                        ✓
+                      </span>
+                    )}
                   </div>
 
-                </button>
+                  <p className="text-[11px] text-[#596964] mt-2.5 line-clamp-2 leading-relaxed font-medium">
+                    {role.description}
+                  </p>
+
+                  {/* Delete button for custom roles */}
+                  {isCustom && (
+                    <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCustomRole(role.id, role.name);
+                        }}
+                        className="text-[10px] font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Delete Custom Role</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               );
             })}
-
           </div>
+        </div>
 
-          {/* CREATE ROLE */}
-          <div className="border-t border-[#edf2f0] p-3">
+        {/* RIGHT COLUMN: PERMISSIONS MATRIX (8 COLS) */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/95 p-6 shadow-[0_20px_50px_rgba(15,118,110,0.08)] backdrop-blur-3xl space-y-6">
+            {/* Header of selected role */}
+            <div className="border-b border-[#DFE8E5] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${selectedRole.colorBg} text-white flex items-center justify-center shadow-md`}>
+                  {React.createElement(selectedRole.icon, { className: "w-6 h-6" })}
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-[#172522] flex items-center gap-2">
+                    <span>{selectedRole.name} Matrix</span>
+                    {selectedRole.roleType === "CUSTOM_TENANT" ? (
+                      <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg">
+                        Custom Role
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-lg">
+                        Standard Role
+                      </span>
+                    )}
+                  </h2>
+                  <p className="text-xs text-[#596964] mt-0.5 font-medium">{selectedRole.description}</p>
+                </div>
+              </div>
 
-            <button className="flex w-full items-center justify-center gap-2 rounded-[9px] border border-dashed border-[#cbdcd7] py-2.5 text-[8px] font-semibold text-[#0f766e] hover:bg-[#f5faf8]">
-              <span className="text-[13px]">+</span>
-              Create Custom Role
-            </button>
+              <button
+                type="button"
+                onClick={() => showToast(`Permissions Matrix saved for '${selectedRole.name}'`)}
+                className="flex items-center gap-2 rounded-2xl bg-[#0F766E] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#0c5c56] transition cursor-pointer active:scale-95 self-start sm:self-auto"
+              >
+                <Save className="w-4 h-4 text-white" />
+                <span>Save Matrix</span>
+              </button>
+            </div>
 
+            {/* Matrix Search Filter */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#0F766E]" />
+              <input
+                type="text"
+                value={searchMatrix}
+                onChange={(e) => setSearchMatrix(e.target.value)}
+                placeholder="Filter permissions by keyword (e.g. prescribe, patient, billing)..."
+                className="w-full h-10 rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-4 text-xs font-semibold text-[#172522] placeholder-[#71807c] outline-none focus:border-[#0F766E] shadow-xs"
+              />
+            </div>
+
+            {/* Categorized Permissions Grid */}
+            <div className="space-y-6">
+              {permissionCategories.map((cat) => {
+                const CatIcon = cat.icon;
+                const filteredItems = cat.items.filter(
+                  (item) =>
+                    !searchMatrix.trim() ||
+                    item.label.toLowerCase().includes(searchMatrix.toLowerCase()) ||
+                    item.desc.toLowerCase().includes(searchMatrix.toLowerCase())
+                );
+
+                if (filteredItems.length === 0) return null;
+
+                const allEnabled = filteredItems.every((item) => !!selectedRole.permissions[item.key]);
+
+                return (
+                  <div key={cat.category} className="rounded-2xl border border-[#DFE8E5] bg-gradient-to-br from-teal-50/40 via-white to-white p-4.5 space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-[#edf2f0] pb-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-xl bg-teal-100/80 text-[#0F766E] flex items-center justify-center font-bold">
+                          <CatIcon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-black text-[#172522]">{cat.category}</h3>
+                          <p className="text-[10px] text-[#63827a]">{cat.description}</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCategoryGroup(cat.items, !allEnabled)}
+                        className="text-[10px] font-bold text-[#0F766E] hover:underline"
+                      >
+                        {allEnabled ? "Deselect All" : "Select All"}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {filteredItems.map((item) => {
+                        const isChecked = !!selectedRole.permissions[item.key];
+                        return (
+                          <div
+                            key={item.key}
+                            onClick={() => togglePermission(item.key)}
+                            className={`p-3 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                              isChecked
+                                ? "border-[#0F766E] bg-teal-50/90 shadow-2xs"
+                                : "border-[#DFE8E5] bg-white hover:border-[#7ee8d5]"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}}
+                              className="mt-0.5 h-4 w-4 rounded-md border-slate-300 text-[#0F766E] focus:ring-[#0F766E]"
+                            />
+                            <div>
+                              <span className="text-xs font-bold text-[#172522] block">{item.label}</span>
+                              <span className="text-[10px] text-[#63827a] leading-snug block mt-0.5 font-medium">{item.desc}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        </div>
+      </div>
 
-        </aside>
+      {/* CREATE CUSTOM TENANT ROLE MODAL */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-[#0c2420]/45 backdrop-blur-md transition-opacity"
+              onClick={() => setShowCreateModal(false)}
+            />
 
-        {/* PERMISSION CONTENT */}
-        <main className="space-y-5">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/95 p-6 sm:p-7 shadow-[0_25px_70px_rgba(15,118,110,0.3)] backdrop-blur-3xl overflow-hidden my-auto space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-teal-200/60 pb-3">
+                <h2 className="text-lg font-black text-[#132a26] flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
+                  Create Custom Tenant Role
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-          {/* ROLE HEADER */}
-          <section className="rounded-[17px] border border-[#e4ebe8] bg-white p-5 shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
-
-            <div className="flex items-center justify-between">
-
-              <div className="flex items-center gap-4">
-
-                <div className="flex h-12 w-12 items-center justify-center rounded-[13px] bg-[#e7f5f1] text-[10px] font-bold text-[#0f766e]">
-                  {role?.name.slice(0, 2).toUpperCase()}
+              <form onSubmit={handleCreateCustomRole} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#596964] mb-1">Custom Role Name *</label>
+                  <input
+                    type="text"
+                    value={newRoleName}
+                    onChange={(e) => setNewRoleName(e.target.value)}
+                    placeholder="e.g. Senior Cardiology Fellow, ER Triage Lead"
+                    required
+                    className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3.5 text-xs font-semibold text-[#172522] outline-none focus:border-[#0F766E]"
+                  />
                 </div>
 
                 <div>
-
-                  <div className="flex items-center gap-2">
-
-                    <h2 className="text-[14px] font-semibold text-[#263833]">
-                      {role?.name}
-                    </h2>
-
-                    <span className="rounded-full bg-[#e8f6f0] px-2 py-1 text-[6px] font-semibold text-[#278460]">
-                      {role?.users} USERS
-                    </span>
-
-                  </div>
-
-                  <p className="mt-1 text-[8px] text-[#9aa5a1]">
-                    {role?.description}
-                  </p>
-
+                  <label className="block text-xs font-bold text-[#596964] mb-1">Description / Purpose</label>
+                  <textarea
+                    rows={2}
+                    value={newRoleDesc}
+                    onChange={(e) => setNewRoleDesc(e.target.value)}
+                    placeholder="Briefly describe the responsibilities of this custom role..."
+                    className="w-full rounded-2xl border border-[#DFE8E5] bg-white p-3 text-xs font-medium text-[#172522] outline-none focus:border-[#0F766E] resize-none"
+                  />
                 </div>
 
-              </div>
-
-              <button className="rounded-[8px] border border-[#e1e9e5] px-3 py-2 text-[8px] font-semibold text-[#687771] hover:bg-[#f8faf9]">
-                Edit Role
-              </button>
-
-            </div>
-
-          </section>
-
-          {/* PERMISSION MATRIX */}
-          <section className="overflow-hidden rounded-[17px] border border-[#e4ebe8] bg-white shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
-
-            <div className="flex items-center justify-between border-b border-[#edf2f0] px-5 py-4">
-
-              <div>
-
-                <p className="text-[11px] font-semibold text-[#52615c]">
-                  Permission Matrix
-                </p>
-
-                <p className="mt-1 text-[8px] text-[#9aa5a1]">
-                  Enable or disable access for this role.
-                </p>
-
-              </div>
-
-              <div className="flex items-center gap-2">
-
-                <button
-                  onClick={() => {
-                    const updated = { ...permissions };
-
-                    permissionGroups.forEach((group) => {
-                      group.permissions.forEach((permission) => {
-                        updated[permission] = true;
-                      });
-                    });
-
-                    setPermissions(updated);
-                  }}
-                  className="rounded-[7px] px-2.5 py-1.5 text-[7px] font-semibold text-[#0f766e] hover:bg-[#eaf6f2]"
-                >
-                  Enable All
-                </button>
-
-                <button
-                  onClick={() => {
-                    const updated = { ...permissions };
-
-                    permissionGroups.forEach((group) => {
-                      group.permissions.forEach((permission) => {
-                        updated[permission] = false;
-                      });
-                    });
-
-                    setPermissions(updated);
-                  }}
-                  className="rounded-[7px] px-2.5 py-1.5 text-[7px] font-semibold text-[#899691] hover:bg-[#f3f5f4]"
-                >
-                  Disable All
-                </button>
-
-              </div>
-
-            </div>
-
-            {/* GROUPS */}
-            <div className="divide-y divide-[#edf2f0]">
-
-              {permissionGroups.map((group) => (
-
-                <div
-                  key={group.title}
-                  className="p-5"
-                >
-
-                  <div className="mb-3 flex items-center justify-between">
-
-                    <div className="flex items-center gap-2">
-
-                      <div className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[#f0f5f3] text-[8px] font-bold text-[#687771]">
-                        {group.title.slice(0, 2).toUpperCase()}
-                      </div>
-
-                      <div>
-
-                        <p className="text-[9px] font-semibold text-[#596963]">
-                          {group.title}
-                        </p>
-
-                        <p className="text-[7px] text-[#a0aaa6]">
-                          {group.permissions.length} permissions
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                    <span className="text-[7px] text-[#9aa5a1]">
-                      {group.permissions.filter(
-                        (permission) => permissions[permission]
-                      ).length}{" "}
-                      enabled
-                    </span>
-
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-
-                    {group.permissions.map((permission) => (
-
-                      <PermissionRow
-                        key={permission}
-                        label={permission}
-                        enabled={permissions[permission]}
-                        onChange={() =>
-                          togglePermission(permission)
-                        }
-                      />
-
+                <div>
+                  <label className="block text-xs font-bold text-[#596964] mb-1">Clone Base Template Permissions From</label>
+                  <select
+                    value={templateRoleId}
+                    onChange={(e) => setTemplateRoleId(e.target.value)}
+                    className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3 text-xs font-semibold text-[#172522] outline-none focus:border-[#0F766E]"
+                  >
+                    {rolesList.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} ({r.roleType === "SYSTEM_STANDARD" ? "System Standard" : "Custom"})
+                      </option>
                     ))}
-
-                  </div>
-
+                  </select>
                 </div>
 
-              ))}
-
-            </div>
-
-          </section>
-
-          {/* INFORMATION */}
-          <section className="grid grid-cols-2 gap-5">
-
-            <InfoCard
-              title="Role inheritance"
-              description="Permissions are automatically inherited by every user assigned to this role."
-              icon="RI"
-            />
-
-            <InfoCard
-              title="Security reminder"
-              description="Only grant permissions required for the user's responsibilities and access level."
-              icon="SC"
-            />
-
-          </section>
-
-        </main>
-
-      </div>
-
-      {/* BOTTOM */}
-      <div className="mt-5 flex items-center justify-between rounded-[14px] border border-[#e4ebe8] bg-white px-5 py-4">
-
-        <div>
-
-          <p className="text-[9px] font-semibold text-[#596963]">
-            Managing {role?.name} permissions
-          </p>
-
-          <p className="mt-1 text-[7px] text-[#9aa5a1]">
-            Changes will apply to all users assigned to this role.
-          </p>
-
-        </div>
-
-        <button className="rounded-[8px] bg-[#0f766e] px-5 py-2.5 text-[8px] font-semibold text-white">
-          Save Permission Changes
-        </button>
-
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================================
-   ROLE ICON
-========================================= */
-
-function RoleIcon({
-  color,
-  active,
-}: {
-  color: string;
-  active: boolean;
-}) {
-  const styles: Record<string, string> = {
-    teal: active
-      ? "bg-[#d9f0ea] text-[#0f766e]"
-      : "bg-[#eef5f2] text-[#60736d]",
-    blue: active
-      ? "bg-[#dcecf7] text-[#39799d]"
-      : "bg-[#f0f5f7] text-[#71868e]",
-    purple: active
-      ? "bg-[#eee8f7] text-[#7556a0]"
-      : "bg-[#f5f1f8] text-[#8d7b9f]",
-    orange: active
-      ? "bg-[#fff0dc] text-[#ae7435]"
-      : "bg-[#f8f3ed] text-[#9b8a78]",
-    green: active
-      ? "bg-[#e4f3e7] text-[#42804d]"
-      : "bg-[#f0f6f1] text-[#728b77]",
-  };
-
-  return (
-    <div
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[7px] font-bold ${styles[color]}`}
-    >
-      R
-    </div>
-  );
-}
-
-/* =========================================
-   PERMISSION ROW
-========================================= */
-
-function PermissionRow({
-  label,
-  enabled,
-  onChange,
-}: {
-  label: string;
-  enabled: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <button
-      onClick={onChange}
-      className={`flex items-center justify-between rounded-[9px] border px-3.5 py-3 text-left transition ${
-        enabled
-          ? "border-[#d9eae5] bg-[#f7fbf9]"
-          : "border-[#edf1ef] bg-[#fbfcfc]"
-      }`}
-    >
-
-      <div className="flex items-center gap-2.5">
-
-        <span
-          className={`flex h-5 w-5 items-center justify-center rounded-[6px] text-[8px] font-bold ${
-            enabled
-              ? "bg-[#dff2eb] text-[#278460]"
-              : "bg-[#edf0ef] text-[#a1aaa6]"
-          }`}
-        >
-          {enabled ? "✓" : "—"}
-        </span>
-
-        <span
-          className={`text-[8px] ${
-            enabled
-              ? "font-semibold text-[#596963]"
-              : "text-[#899590]"
-          }`}
-        >
-          {label}
-        </span>
-
-      </div>
-
-      <span
-        className={`relative h-4 w-7 rounded-full transition ${
-          enabled ? "bg-[#0f766e]" : "bg-[#ccd5d1]"
-        }`}
-      >
-
-        <span
-          className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition ${
-            enabled ? "left-[15px]" : "left-0.5"
-          }`}
-        />
-
-      </span>
-
-    </button>
-  );
-}
-
-/* =========================================
-   INFO CARD
-========================================= */
-
-function InfoCard({
-  title,
-  description,
-  icon,
-}: {
-  title: string;
-  description: string;
-  icon: string;
-}) {
-  return (
-    <div className="flex gap-3 rounded-[14px] border border-[#e4ebe8] bg-white p-4">
-
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#e8f5f2] text-[7px] font-bold text-[#0f766e]">
-        {icon}
-      </div>
-
-      <div>
-
-        <p className="text-[9px] font-semibold text-[#596963]">
-          {title}
-        </p>
-
-        <p className="mt-1 text-[7px] leading-4 text-[#9aa5a1]">
-          {description}
-        </p>
-
-      </div>
-
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-[#0F766E] text-white font-bold text-xs shadow-md hover:bg-[#0c5c56]"
+                  >
+                    Create Custom Role
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -181,42 +181,30 @@ export default function CPTPage() {
   // View Mode: 'grid' (3D Colorized Cards) or 'table' (Elevated Glass Table)
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  // Filters
+  // Filters & Debouncing
   const [search, setSearch] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
+  const [isFetching, setIsFetching] = useState<boolean>(false);
 
-  // Modals
-  const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [showEditModal, setShowEditModal] = useState<boolean>(false);
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [showViewModal, setShowViewModal] = useState<boolean>(false);
-  const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
-  const [selectedItem, setSelectedItem] = useState<CPTItem | null>(null);
+  // Smooth Search Debouncing (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // Form States
-  const [formData, setFormData] = useState({
-    code: "",
-    description: "",
-    category: "",
-    subcategory: "",
-    fee: "",
-    version: "2026",
-    is_active: true,
-  });
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // File Upload State
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<boolean>(false);
-  const [previewData, setPreviewData] = useState<FilePreviewData | null>(null);
-  const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
+  const isInitialLoad = useRef(true);
 
   // Load Data from Backend API
   const loadData = useCallback(async () => {
-    setIsLoading(true);
+    if (isInitialLoad.current) {
+      setIsLoading(true);
+    } else {
+      setIsFetching(true);
+    }
     setError(null);
     try {
       const is_active_param =
@@ -226,7 +214,7 @@ export default function CPTPage() {
         selectedStatus === "Soft-Deleted" || selectedStatus === "All";
 
       const res = await getCPTCodesApi({
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         category: selectedCategory !== "All" ? selectedCategory : undefined,
         is_active: is_active_param,
         include_deleted: include_deleted_param,
@@ -245,8 +233,10 @@ export default function CPTPage() {
       setError(err?.message || "Failed to load CPT procedure codes from backend.");
     } finally {
       setIsLoading(false);
+      setIsFetching(false);
+      isInitialLoad.current = false;
     }
-  }, [search, selectedCategory, selectedStatus, page, pageSize]);
+  }, [debouncedSearch, selectedCategory, selectedStatus, page, pageSize]);
 
   useEffect(() => {
     loadData();
@@ -645,8 +635,11 @@ export default function CPTPage() {
                   setPage(1);
                 }}
                 placeholder="Search CPT code, description, category..."
-                className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-3 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 shadow-xs"
+                className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-9 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 shadow-xs"
               />
+              {isFetching && (
+                <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[#0F766E]" />
+              )}
             </div>
 
             {/* Category Filter */}
@@ -729,25 +722,29 @@ export default function CPTPage() {
             <AlertCircle className="w-8 h-8 mx-auto mb-2 text-rose-600" />
             <p className="font-bold">{error}</p>
           </div>
-        ) : items.length === 0 ? (
-          <div className="rounded-3xl border-2 border-[#7ee8d5]/40 bg-white/90 p-16 text-center shadow-lg backdrop-blur-xl">
-            <Database className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
-            <h3 className="font-black text-lg text-[#172522]">No CPT Codes Found</h3>
-            <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
-              Upload an Excel/CSV file or click &quot;Add CPT Code&quot; to populate procedure codes.
-            </p>
-          </div>
-        ) : viewMode === "grid" ? (
-          /* ============================================================
-             3D COLORIZED GLASS CARDS GRID VIEW
-          ============================================================ */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
-            {items.map((item) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
+        ) : (
+          <div className={`transition-opacity duration-200 ${isFetching ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
+            {items.length === 0 ? (
+              <div className="rounded-3xl border-2 border-[#7ee8d5]/40 bg-white/90 p-16 text-center shadow-lg backdrop-blur-xl">
+                <Database className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
+                <h3 className="font-black text-lg text-[#172522]">No CPT Codes Found</h3>
+                <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
+                  {search || selectedCategory !== "All" || selectedStatus !== "All"
+                    ? "No procedure codes match your search criteria."
+                    : "Upload an Excel/CSV file or click \"Add CPT Code\" to populate procedure codes."}
+                </p>
+              </div>
+            ) : viewMode === "grid" ? (
+              /* ============================================================
+                 3D COLORIZED GLASS CARDS GRID VIEW
+              ============================================================ */
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                {items.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
                 className={`relative group rounded-2xl border-2 p-3.5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-xl flex flex-col justify-between overflow-hidden ${item.is_deleted
                   ? "bg-gradient-to-br from-rose-50/90 via-rose-100/30 to-white border-rose-300/80"
                   : "bg-gradient-to-br from-teal-50/90 via-emerald-50/40 to-white border-[#7ee8d5]/70 hover:border-[#0f766e]"

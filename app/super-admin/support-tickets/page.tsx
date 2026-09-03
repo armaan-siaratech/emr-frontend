@@ -43,11 +43,23 @@ export default function SuperAdminSupportTicketsPage() {
   const [wsConnected, setWsConnected] = useState<boolean>(false);
   const socketRef = useRef<WebSocket | null>(null);
 
-  // Filters
+  // Filters & Debouncing
   const [search, setSearch] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const [selectedPriority, setSelectedPriority] = useState<string>("All");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [isFetching, setIsFetching] = useState<boolean>(false);
+
+  // Smooth Search Debouncing (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const isInitialLoad = useRef(true);
 
   // Modals
   const [showViewModal, setShowViewModal] = useState<boolean>(false);
@@ -61,11 +73,15 @@ export default function SuperAdminSupportTicketsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    setIsLoading(true);
+    if (isInitialLoad.current) {
+      setIsLoading(true);
+    } else {
+      setIsFetching(true);
+    }
     setError(null);
     try {
       const res = await getTicketsApi({
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         status: selectedStatus !== "All" ? selectedStatus : undefined,
         priority: selectedPriority !== "All" ? selectedPriority : undefined,
         category: selectedCategory !== "All" ? selectedCategory : undefined,
@@ -78,8 +94,10 @@ export default function SuperAdminSupportTicketsPage() {
       setError(err?.message || "Failed to load support tickets.");
     } finally {
       setIsLoading(false);
+      setIsFetching(false);
+      isInitialLoad.current = false;
     }
-  }, [search, selectedStatus, selectedPriority, selectedCategory, page, pageSize]);
+  }, [debouncedSearch, selectedStatus, selectedPriority, selectedCategory, page, pageSize]);
 
   useEffect(() => {
     loadData();
@@ -265,8 +283,11 @@ export default function SuperAdminSupportTicketsPage() {
                   setPage(1);
                 }}
                 placeholder="Search ticket #, subject or user..."
-                className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-3 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] shadow-xs"
+                className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-9 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] shadow-xs"
               />
+              {isFetching && (
+                <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[#0F766E]" />
+              )}
             </div>
 
             <select
@@ -336,15 +357,17 @@ export default function SuperAdminSupportTicketsPage() {
             <AlertCircle className="w-8 h-8 mx-auto mb-2 text-rose-600" />
             <p className="font-bold">{error}</p>
           </div>
-        ) : items.length === 0 ? (
-          <div className="p-16 text-center">
-            <Ticket className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
-            <h3 className="font-black text-lg text-[#172522]">No Support Tickets Found</h3>
-            <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
-              No support tickets match the current search or filters.
-            </p>
-          </div>
         ) : (
+          <div className={`transition-opacity duration-200 ${isFetching ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
+            {items.length === 0 ? (
+              <div className="p-16 text-center">
+                <Ticket className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
+                <h3 className="font-black text-lg text-[#172522]">No Support Tickets Found</h3>
+                <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
+                  No support tickets match the current search or filters.
+                </p>
+              </div>
+            ) : (
           <div className="overflow-x-auto rounded-2xl border border-[#EDF2F0]">
             <table className="w-full min-w-[1000px] text-left text-xs">
               <thead>
@@ -448,6 +471,7 @@ export default function SuperAdminSupportTicketsPage() {
             </table>
           </div>
         )}
+      </div>
 
         {/* Pagination Footer */}
         <div className="flex items-center justify-between pt-2">

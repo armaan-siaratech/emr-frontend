@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserCheck,
@@ -50,41 +50,36 @@ export default function AdminListPage() {
   // View Mode: 'grid' (3D Colorized Cards) or 'table' (Elevated Glass Table)
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  // Filters
+  // Filters & Debouncing
   const [search, setSearch] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
+  const [isFetching, setIsFetching] = useState<boolean>(false);
 
-  // Modals
-  const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [showEditModal, setShowEditModal] = useState<boolean>(false);
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [showViewModal, setShowViewModal] = useState<boolean>(false);
-  const [selectedItem, setSelectedItem] = useState<AdminItem | null>(null);
+  // Smooth Search Debouncing (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // Form States
-  const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    designation: "Platform Super Admin",
-    password: "",
-    is_active: true,
-  });
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const isInitialLoad = useRef(true);
 
   // Load Data from Backend API
   const loadData = useCallback(async () => {
-    setIsLoading(true);
+    if (isInitialLoad.current) {
+      setIsLoading(true);
+    } else {
+      setIsFetching(true);
+    }
     setError(null);
     try {
       const is_active_param =
         selectedStatus === "Active" ? true : selectedStatus === "Inactive" ? false : undefined;
 
       const res = await getAdminsApi({
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         is_active: is_active_param,
         page,
         page_size: pageSize,
@@ -96,8 +91,10 @@ export default function AdminListPage() {
       setError(err?.message || "Failed to load administrator accounts from backend.");
     } finally {
       setIsLoading(false);
+      setIsFetching(false);
+      isInitialLoad.current = false;
     }
-  }, [search, selectedStatus, page, pageSize]);
+  }, [debouncedSearch, selectedStatus, page, pageSize]);
 
   useEffect(() => {
     loadData();
@@ -335,8 +332,11 @@ export default function AdminListPage() {
                   setPage(1);
                 }}
                 placeholder="Search name, email or designation..."
-                className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-3 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 shadow-xs"
+                className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-9 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 shadow-xs"
               />
+              {isFetching && (
+                <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[#0F766E]" />
+              )}
             </div>
 
             {/* Status Filter */}
@@ -401,20 +401,24 @@ export default function AdminListPage() {
             <AlertCircle className="w-8 h-8 mx-auto mb-2 text-rose-600" />
             <p className="font-bold">{error}</p>
           </div>
-        ) : items.length === 0 ? (
-          <div className="rounded-3xl border-2 border-[#7ee8d5]/40 bg-white/90 p-16 text-center shadow-lg backdrop-blur-xl">
-            <Database className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
-            <h3 className="font-black text-lg text-[#172522]">No Administrators Found</h3>
-            <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
-              Click &quot;Add Administrator&quot; to provision a new Super Admin account.
-            </p>
-          </div>
-        ) : viewMode === "grid" ? (
-          /* ============================================================
-             3D COLORIZED GLASS CARDS GRID VIEW
-          ============================================================ */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
-            {items.map((item) => {
+        ) : (
+          <div className={`transition-opacity duration-200 ${isFetching ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
+            {items.length === 0 ? (
+              <div className="rounded-3xl border-2 border-[#7ee8d5]/40 bg-white/90 p-16 text-center shadow-lg backdrop-blur-xl">
+                <Database className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
+                <h3 className="font-black text-lg text-[#172522]">No Administrators Found</h3>
+                <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
+                  {search || selectedStatus !== "All"
+                    ? "No administrator accounts match your search criteria."
+                    : "Click \"Add Administrator\" to provision a new Super Admin account."}
+                </p>
+              </div>
+            ) : viewMode === "grid" ? (
+              /* ============================================================
+                 3D COLORIZED GLASS CARDS GRID VIEW
+              ============================================================ */
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                {items.map((item) => {
               const initials = `${item.first_name.charAt(0)}${item.last_name.charAt(0)}`.toUpperCase();
               return (
                 <motion.div

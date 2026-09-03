@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Users,
   UserCheck,
+  UserPlus,
   Building2,
   FileBarChart,
   Settings,
@@ -96,6 +97,11 @@ export default function Sidebar() {
       title: "Patient Care",
       items: [
         {
+          name: "Patients",
+          href: "/admin/patients",
+          icon: UserPlus,
+        },
+        {
           name: "Patient Registry",
           href: "/patients",
           icon: Users,
@@ -137,7 +143,7 @@ export default function Sidebar() {
       items: [
         {
           name: "Doctors & Staff",
-          href: "/doctors",
+          href: "/admin/users",
           icon: UserCheck,
         },
         {
@@ -149,6 +155,11 @@ export default function Sidebar() {
           name: "Clinical Reports",
           href: "/reports",
           icon: FileBarChart,
+        },
+        {
+          name: "Roles & Permissions",
+          href: "/admin/roles-permissions",
+          icon: ShieldCheck,
         },
         {
           name: "System Settings",

@@ -1,848 +1,842 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Sparkles,
+  UserCheck,
+  Building,
+  Hash,
+  User,
+  Camera,
+  Phone,
+  Mail,
+  Calendar,
+  MapPin,
+  ShieldCheck,
+  CreditCard,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  Upload,
+  Stethoscope,
+  Activity,
+  CalendarClock,
+  DollarSign,
+  Award,
+  Clock,
+  Video,
+  Lock,
+  ChevronRight,
+  Shield,
+  Layers,
+  FileBadge,
+  Zap,
+  Star,
+  Check,
+} from "lucide-react";
+import { getFacilitiesApi, FacilityRecordItem } from "@/lib/api/facilityApi";
+
+export type StaffRole = "Doctor" | "Nurse" | "Scheduler" | "Billing";
 
 export default function CreateUserPage() {
-  const [role, setRole] = useState("Doctor");
-  const [status, setStatus] = useState("Active");
-  const [mfa, setMfa] = useState(true);
-  const [sendInvite, setSendInvite] = useState(true);
-  const [saved, setSaved] = useState(false);
+  const router = useRouter();
 
-  const handleSave = () => {
-    setSaved(true);
+  // Role Selection
+  const [selectedRole, setSelectedRole] = useState<StaffRole>("Doctor");
+
+  // Multi-Facility & Primary Facility State
+  const [facilitiesList, setFacilitiesList] = useState<FacilityRecordItem[]>([]);
+  const [primaryFacilityId, setPrimaryFacilityId] = useState<string>("");
+  const [assignedFacilityIds, setAssignedFacilityIds] = useState<string[]>([]);
+
+  // Common Core Fields
+  const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [employeeId, setEmployeeId] = useState("DOC-2026-081");
+  const [dob, setDob] = useState("");
+  const [gender, setGender] = useState("Female");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [department, setDepartment] = useState("Cardiology");
+  const [status, setStatus] = useState("Active");
+
+  // Photo
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // 1. DOCTOR / PROVIDER Specific Fields
+  const [npiNumber, setNpiNumber] = useState("");
+  const [medicalLicense, setMedicalLicense] = useState("");
+  const [licenseState, setLicenseState] = useState("CA");
+  const [deaNumber, setDeaNumber] = useState("");
+  const [specialty, setSpecialty] = useState("Cardiology");
+  const [taxonomyCode, setTaxonomyCode] = useState("207RC0000X");
+  const [credentials, setCredentials] = useState("MD");
+  const [prescribingPrivileges, setPrescribingPrivileges] = useState("Full Controlled");
+  const [telehealthUrl, setTelehealthUrl] = useState("");
+  const [consultationFee, setConsultationFee] = useState("180");
+  const [slotDuration, setSlotDuration] = useState("30 min");
+
+  // 2. NURSE Specific Fields
+  const [nursingLicense, setNursingLicense] = useState("");
+  const [nurseType, setNurseType] = useState("RN");
+  const [assignedWard, setAssignedWard] = useState("ICU Ward 3B");
+  const [shiftPattern, setShiftPattern] = useState("Day Shift (07:00 - 19:00)");
+  const [supervisingDoctor, setSupervisingDoctor] = useState("Dr. Sarah Mitchell");
+  const [triageCert, setTriageCert] = useState("BLS, ACLS, IV Certified");
+
+  // 3. SCHEDULER / RECEPTIONIST Specific Fields
+  const [receptionStation, setReceptionStation] = useState("Desk 2 - Main Lobby");
+  const [phoneExtension, setPhoneExtension] = useState("x402");
+  const [bookingClearance, setBookingClearance] = useState("Full Booking & Overbook");
+  const [shiftHours, setShiftHours] = useState("Morning (08:00 - 16:30)");
+
+  // 4. BILLING STAFF Specific Fields
+  const [billingCert, setBillingCert] = useState("CPC Certified");
+  const [clearinghouseId, setClearinghouseId] = useState("CH-99201");
+  const [approvalLimit, setApprovalLimit] = useState("5000");
+
+  // UI States
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    getFacilitiesApi()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setFacilitiesList(data);
+          setPrimaryFacilityId(data[0].id);
+          setAssignedFacilityIds([data[0].id]);
+        } else {
+          // Fallback mock facilities if empty database
+          const mockFacs: FacilityRecordItem[] = [
+            {
+              id: "fac-1",
+              tenant_id: "tenant-1",
+              facility_type_id: "ft-1",
+              name: "Central Medical Center",
+              code: "CMC-MAIN",
+              address_line1: "100 Hospital Way",
+              city: "Springfield",
+              state: "IL",
+              postal_code: "62701",
+              country: "USA",
+              status: "ACTIVE",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            {
+              id: "fac-2",
+              tenant_id: "tenant-1",
+              facility_type_id: "ft-2",
+              name: "Downtown OPD Branch",
+              code: "CMC-[#2]",
+              address_line1: "45 Market St",
+              city: "Springfield",
+              state: "IL",
+              postal_code: "62702",
+              country: "USA",
+              status: "ACTIVE",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            {
+              id: "fac-3",
+              tenant_id: "tenant-1",
+              facility_type_id: "ft-3",
+              name: "Westside Urgent Care",
+              code: "WUC-WEST",
+              address_line1: "88 West Blvd",
+              city: "Springfield",
+              state: "IL",
+              postal_code: "62704",
+              country: "USA",
+              status: "ACTIVE",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ];
+          setFacilitiesList(mockFacs);
+          setPrimaryFacilityId(mockFacs[0].id);
+          setAssignedFacilityIds([mockFacs[0].id, mockFacs[1].id]);
+        }
+      })
+      .catch((err) => {
+        console.error("Could not load facilities:", err);
+      });
+  }, []);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!firstName.trim() || !lastName.trim() || !phone.trim() || !email.trim()) {
+      setError("Please fill in all mandatory fields marked with an asterisk (*).");
+      return;
+    }
+
+    setLoading(true);
 
     setTimeout(() => {
-      setSaved(false);
-    }, 3000);
+      setLoading(false);
+      showToast(`New ${selectedRole} profile for '${firstName} ${lastName}' successfully registered!`);
+      setTimeout(() => {
+        router.push("/admin/users");
+      }, 1200);
+    }, 800);
   };
 
+  // Role Theme Color Configs
+  const roleConfig = {
+    Doctor: {
+      title: "Provider / Doctor",
+      badge: "PHYSICIAN & PRESCRIBER",
+      accentBg: "from-[#0F766E] via-[#115e59] to-[#0c4f4a]",
+      glowColor: "bg-[#7ee8d5]/30",
+      cardBorder: "border-[#7ee8d5]/80",
+      themeColor: "#0F766E",
+      icon: Stethoscope,
+    },
+    Nurse: {
+      title: "Clinical Nurse",
+      badge: "PATIENT CARE & NURSE CADRE",
+      accentBg: "from-blue-700 via-indigo-700 to-slate-900",
+      glowColor: "bg-blue-400/30",
+      cardBorder: "border-blue-400/80",
+      themeColor: "#2563EB",
+      icon: Activity,
+    },
+    Scheduler: {
+      title: "Scheduler / Receptionist",
+      badge: "FRONT DESK & APPOINTMENTS",
+      accentBg: "from-amber-600 via-orange-600 to-[#1f2937]",
+      glowColor: "bg-amber-400/30",
+      cardBorder: "border-amber-400/80",
+      themeColor: "#D97706",
+      icon: CalendarClock,
+    },
+    Billing: {
+      title: "Billing & Claims Specialist",
+      badge: "FINANCE & CLEARINGHOUSE",
+      accentBg: "from-purple-700 via-indigo-800 to-[#111827]",
+      glowColor: "bg-purple-400/30",
+      cardBorder: "border-purple-400/80",
+      themeColor: "#7C3AED",
+      icon: DollarSign,
+    },
+  }[selectedRole];
+
+  const CurrentRoleIcon = roleConfig.icon;
+
+  const primaryFacilityObj = facilitiesList.find((f) => f.id === primaryFacilityId);
+  const secondaryCount = assignedFacilityIds.filter((id) => id !== primaryFacilityId).length;
+
   return (
-    <div className="mx-auto max-w-[1450px]">
+    <div className="w-full space-y-6 font-sans pb-24">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border-2 border-[#7ee8d5]/80 bg-[#0c2420]/95 px-5 py-3.5 text-xs font-bold text-teal-200 shadow-[0_15px_40px_rgba(15,118,110,0.4)] backdrop-blur-xl"
+          >
+            <CheckCircle2 className="w-5 h-5 text-teal-400" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* HEADER */}
-      <div className="mb-6 flex items-end justify-between">
+      {/* TOP COMMAND HEADER */}
+      <div className={`relative overflow-hidden rounded-3xl border-2 ${roleConfig.cardBorder} bg-gradient-to-r ${roleConfig.accentBg} p-6 sm:p-7 text-white shadow-[0_20px_50px_rgba(0,0,0,0.2)] backdrop-blur-3xl transition-all duration-500`}>
+        <div className={`pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full ${roleConfig.glowColor} blur-3xl`} />
 
-        <div>
-
-          <div className="mb-2 flex items-center gap-2 text-[9px]">
-
-            <Link
-              href="/admin"
-              className="font-semibold text-[#0f766e] hover:underline"
-            >
-              Administration
-            </Link>
-
-            <span className="text-[#b2bcb8]">/</span>
-
-            <Link
-              href="/admin/users"
-              className="font-semibold text-[#0f766e] hover:underline"
-            >
-              Users
-            </Link>
-
-            <span className="text-[#b2bcb8]">/</span>
-
-            <span className="text-[#8d9995]">
-              Create User
-            </span>
-
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-teal-200 text-xs font-bold uppercase tracking-wider">
+              <Link href="/admin" className="hover:text-white transition">Admin</Link>
+              <span>/</span>
+              <Link href="/admin/users" className="hover:text-white transition">Staff Directory</Link>
+              <span>/</span>
+              <span className="text-white font-black">Role Command Center</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-3 mt-1.5">
+              <CurrentRoleIcon className="w-7 h-7 text-teal-300 animate-pulse" />
+              <span>Add Tenant Staff:</span>
+              <span className="bg-white/15 px-3 py-1 rounded-2xl border border-white/30 font-mono text-lg text-teal-200">
+                {roleConfig.title}
+              </span>
+            </h1>
           </div>
 
-          <h1 className="text-[25px] font-semibold tracking-[-0.035em] text-[#172522]">
-            Create User
-          </h1>
-
-          <p className="mt-1.5 text-[10px] text-[#8a9793]">
-            Create a new user account and configure their access.
-          </p>
-
-        </div>
-
-        <div className="flex items-center gap-2">
-
-          <Link
-            href="/admin/users"
-            className="rounded-[9px] border border-[#e1e9e5] bg-white px-4 py-2.5 text-[9px] font-semibold text-[#697772] hover:bg-[#f7faf9]"
-          >
-            Cancel
-          </Link>
-
-          <button
-            onClick={handleSave}
-            className="rounded-[9px] bg-[#0f766e] px-5 py-2.5 text-[9px] font-semibold text-white shadow-[0_5px_15px_rgba(15,118,110,0.15)] hover:bg-[#0b665f]"
-          >
-            Create User
-          </button>
-
-        </div>
-
-      </div>
-
-      {/* SUCCESS */}
-      {saved && (
-        <div className="mb-5 flex items-center gap-2 rounded-[10px] border border-[#cce8de] bg-[#edf9f5] px-4 py-3 text-[9px] font-semibold text-[#278460]">
-
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#d7f1e7]">
-            ✓
-          </span>
-
-          User created successfully.
-
-        </div>
-      )}
-
-      {/* MAIN */}
-      <div className="grid grid-cols-[1fr_330px] gap-5">
-
-        {/* LEFT */}
-        <div className="space-y-5">
-
-          {/* PERSONAL INFORMATION */}
-          <section className="rounded-[17px] border border-[#e4ebe8] bg-white p-6 shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
-
-            <SectionHeader
-              number="01"
-              title="Personal Information"
-              description="Basic information about the user."
-            />
-
-            <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-
-              <Field
-                label="First Name"
-                required
-                placeholder="Enter first name"
-              />
-
-              <Field
-                label="Last Name"
-                required
-                placeholder="Enter last name"
-              />
-
-              <Field
-                label="Email Address"
-                required
-                type="email"
-                placeholder="name@healthcare.com"
-              />
-
-              <Field
-                label="Phone Number"
-                placeholder="+1 (555) 000-0000"
-              />
-
-              <Field
-                label="Date of Birth"
-                type="date"
-              />
-
-              <Field
-                label="Gender"
-                select
-                options={[
-                  "Select gender",
-                  "Male",
-                  "Female",
-                  "Other",
-                  "Prefer not to say",
-                ]}
-              />
-
-            </div>
-
-          </section>
-
-          {/* PROFESSIONAL INFORMATION */}
-          <section className="rounded-[17px] border border-[#e4ebe8] bg-white p-6 shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
-
-            <SectionHeader
-              number="02"
-              title="Professional Information"
-              description="Organization and employment details."
-            />
-
-            <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-
-              <Field
-                label="Role"
-                required
-                value={role}
-                select
-                options={[
-                  "Administrator",
-                  "Doctor",
-                  "Nurse",
-                  "Receptionist",
-                  "Billing Staff",
-                  "Lab Technician",
-                  "Staff",
-                ]}
-                onChange={setRole}
-              />
-
-              <Field
-                label="Department"
-                required
-                select
-                options={[
-                  "Select department",
-                  "Administration",
-                  "Cardiology",
-                  "Internal Medicine",
-                  "Pediatrics",
-                  "Orthopedics",
-                  "Emergency",
-                  "General Ward",
-                  "Laboratory",
-                  "Billing",
-                  "Front Desk",
-                ]}
-              />
-
-              <Field
-                label="Employee ID"
-                required
-                placeholder="e.g. DOC-1005"
-              />
-
-              <Field
-                label="Job Title"
-                placeholder="e.g. Senior Physician"
-              />
-
-              <Field
-                label="Facility"
-                required
-                select
-                options={[
-                  "Main Healthcare Center",
-                  "Downtown Medical Center",
-                  "Westside Clinic",
-                  "North Campus",
-                ]}
-              />
-
-              <Field
-                label="Employment Type"
-                select
-                options={[
-                  "Full Time",
-                  "Part Time",
-                  "Contract",
-                  "Temporary",
-                ]}
-              />
-
-              {role === "Doctor" && (
-                <>
-                  <Field
-                    label="Specialization"
-                    select
-                    options={[
-                      "Select specialization",
-                      "Cardiology",
-                      "Internal Medicine",
-                      "Pediatrics",
-                      "Orthopedics",
-                      "Dermatology",
-                      "Neurology",
-                      "General Medicine",
-                    ]}
-                  />
-
-                  <Field
-                    label="License Number"
-                    placeholder="Enter medical license number"
-                  />
-                </>
-              )}
-
-            </div>
-
-          </section>
-
-          {/* ACCOUNT ACCESS */}
-          <section className="rounded-[17px] border border-[#e4ebe8] bg-white p-6 shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
-
-            <SectionHeader
-              number="03"
-              title="Account Access"
-              description="Configure login and account settings."
-            />
-
-            <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-
-              <div>
-
-                <label className="mb-2 block text-[8px] font-semibold uppercase tracking-[0.08em] text-[#899691]">
-                  Username
-                </label>
-
-                <div className="relative">
-
-                  <input
-                    placeholder="username"
-                    className="h-10 w-full rounded-[9px] border border-[#dfe8e4] bg-[#fbfcfc] px-3 pr-24 text-[9px] text-[#596963] outline-none placeholder:text-[#a5afab] focus:border-[#0f766e] focus:bg-white focus:ring-2 focus:ring-[#0f766e]/10"
-                  />
-
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[7px] text-[#a0aaa6]">
-                    Optional
-                  </span>
-
-                </div>
-
-              </div>
-
-              <div>
-
-                <label className="mb-2 block text-[8px] font-semibold uppercase tracking-[0.08em] text-[#899691]">
-                  Temporary Password
-                </label>
-
-                <div className="relative">
-
-                  <input
-                    type="password"
-                    placeholder="Auto-generated"
-                    className="h-10 w-full rounded-[9px] border border-[#dfe8e4] bg-[#fbfcfc] px-3 pr-20 text-[9px] text-[#596963] outline-none placeholder:text-[#a5afab] focus:border-[#0f766e] focus:bg-white focus:ring-2 focus:ring-[#0f766e]/10"
-                  />
-
-                  <button className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[6px] px-2 py-1 text-[7px] font-semibold text-[#0f766e] hover:bg-[#e7f5f1]">
-                    Generate
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="mt-5 space-y-3">
-
-              <ToggleRow
-                title="Send invitation email"
-                description="Send the user an email with instructions to access their account."
-                checked={sendInvite}
-                onChange={setSendInvite}
-              />
-
-              <ToggleRow
-                title="Require multi-factor authentication"
-                description="Require this user to configure MFA during their first login."
-                checked={mfa}
-                onChange={setMfa}
-              />
-
-            </div>
-
-          </section>
-
-          {/* ACCOUNT STATUS */}
-          <section className="rounded-[17px] border border-[#e4ebe8] bg-white p-6 shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
-
-            <SectionHeader
-              number="04"
-              title="Account Status"
-              description="Control the user's account availability."
-            />
-
-            <div className="grid grid-cols-3 gap-3">
-
-              <StatusOption
-                title="Active"
-                description="User can sign in immediately."
-                selected={status === "Active"}
-                onClick={() => setStatus("Active")}
-                type="active"
-              />
-
-              <StatusOption
-                title="Pending"
-                description="Awaiting account activation."
-                selected={status === "Pending"}
-                onClick={() => setStatus("Pending")}
-                type="pending"
-              />
-
-              <StatusOption
-                title="Inactive"
-                description="User cannot access the system."
-                selected={status === "Inactive"}
-                onClick={() => setStatus("Inactive")}
-                type="inactive"
-              />
-
-            </div>
-
-          </section>
-
-        </div>
-
-        {/* RIGHT SIDEBAR */}
-        <aside className="space-y-5">
-
-          {/* USER PREVIEW */}
-          <section className="overflow-hidden rounded-[17px] border border-[#e4ebe8] bg-white shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
-
-            <div className="bg-[#103f3a] px-5 py-6">
-
-              <p className="text-[8px] font-semibold uppercase tracking-[0.13em] text-[#8db6af]">
-                Account Preview
-              </p>
-
-              <div className="mt-5 flex flex-col items-center text-center">
-
-                <div className="flex h-[68px] w-[68px] items-center justify-center rounded-[18px] bg-[#dff1ec] text-[16px] font-bold text-[#0f766e]">
-                  NU
-                </div>
-
-                <p className="mt-3 text-[13px] font-semibold text-white">
-                  New User
-                </p>
-
-                <p className="mt-1 text-[8px] text-[#9bc0b9]">
-                  {role}
-                </p>
-
-              </div>
-
-            </div>
-
-            <div className="space-y-4 p-5">
-
-              <PreviewRow
-                label="Role"
-                value={role}
-              />
-
-              <PreviewRow
-                label="Status"
-                value={status}
-              />
-
-              <PreviewRow
-                label="MFA"
-                value={mfa ? "Required" : "Not Required"}
-              />
-
-              <PreviewRow
-                label="Invitation"
-                value={sendInvite ? "Email Invite" : "Manual"}
-              />
-
-            </div>
-
-          </section>
-
-          {/* PERMISSIONS */}
-          <section className="rounded-[17px] border border-[#e4ebe8] bg-white p-5 shadow-[0_5px_20px_rgba(30,60,52,0.025)]">
-
-            <div className="mb-4">
-
-              <p className="text-[11px] font-semibold text-[#52615c]">
-                Role Permissions
-              </p>
-
-              <p className="mt-1 text-[8px] text-[#9aa5a1]">
-                Permissions inherited from the selected role.
-              </p>
-
-            </div>
-
-            <div className="space-y-2">
-
-              <Permission
-                label="View patients"
-                enabled
-              />
-
-              <Permission
-                label="Manage appointments"
-                enabled
-              />
-
-              <Permission
-                label="Clinical documentation"
-                enabled={role === "Doctor" || role === "Nurse"}
-              />
-
-              <Permission
-                label="Manage users"
-                enabled={role === "Administrator"}
-              />
-
-              <Permission
-                label="View reports"
-                enabled
-              />
-
-              <Permission
-                label="System settings"
-                enabled={role === "Administrator"}
-              />
-
-            </div>
-
-            <Link
-              href="/admin/roles-permissions"
-              className="mt-4 block text-center text-[8px] font-semibold text-[#0f766e] hover:underline"
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex items-center gap-1.5 rounded-2xl border border-white/30 bg-white/15 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-white hover:text-[#0F766E] transition cursor-pointer active:scale-95"
             >
-              Manage roles & permissions →
-            </Link>
-
-          </section>
-
-          {/* SECURITY NOTE */}
-          <section className="rounded-[15px] border border-[#dcece7] bg-[#f5fbf8] p-5">
-
-            <div className="flex gap-3">
-
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#dff1eb] text-[10px] text-[#0f766e]">
-                ✓
-              </div>
-
-              <div>
-
-                <p className="text-[9px] font-semibold text-[#52615c]">
-                  Secure account setup
-                </p>
-
-                <p className="mt-1.5 text-[8px] leading-4 text-[#82908b]">
-                  New users will be required to verify their identity
-                  before accessing protected healthcare information.
-                </p>
-
-              </div>
-
-            </div>
-
-          </section>
-
-        </aside>
-
-      </div>
-
-      {/* BOTTOM ACTIONS */}
-      <div className="mt-5 flex items-center justify-between rounded-[14px] border border-[#e4ebe8] bg-white px-5 py-4">
-
-        <div>
-
-          <p className="text-[9px] font-semibold text-[#596963]">
-            Ready to create this account?
-          </p>
-
-          <p className="mt-1 text-[7px] text-[#9aa5a1]">
-            Review the information before creating the user.
-          </p>
-
+              <ChevronLeft className="w-4 h-4" />
+              <span>Cancel</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-2xl bg-white px-6 py-2.5 text-xs font-black text-[#0F766E] shadow-xl hover:bg-teal-50 hover:shadow-2xl transition cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <UserCheck className="w-4 h-4 text-[#0F766E]" />
+              <span>{loading ? "Registering..." : `Register ${selectedRole}`}</span>
+            </button>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2">
-
-          <Link
-            href="/admin/users"
-            className="rounded-[8px] border border-[#e1e9e5] px-4 py-2 text-[8px] font-semibold text-[#687771]"
-          >
-            Cancel
-          </Link>
-
-          <button
-            onClick={handleSave}
-            className="rounded-[8px] bg-[#0f766e] px-5 py-2 text-[8px] font-semibold text-white"
-          >
-            Create User
-          </button>
-
-        </div>
-
       </div>
 
-    </div>
-  );
-}
-
-/* =========================================
-   SECTION HEADER
-========================================= */
-
-function SectionHeader({
-  number,
-  title,
-  description,
-}: {
-  number: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="mb-5 flex items-start gap-3">
-
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[#e7f5f1] text-[8px] font-bold text-[#0f766e]">
-        {number}
-      </div>
-
-      <div>
-
-        <h2 className="text-[12px] font-semibold text-[#263833]">
-          {title}
-        </h2>
-
-        <p className="mt-1 text-[8px] text-[#98a49f]">
-          {description}
-        </p>
-
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================================
-   FIELD
-========================================= */
-
-function Field({
-  label,
-  required,
-  placeholder,
-  type = "text",
-  select,
-  options = [],
-  value,
-  onChange,
-}: {
-  label: string;
-  required?: boolean;
-  placeholder?: string;
-  type?: string;
-  select?: boolean;
-  options?: string[];
-  value?: string;
-  onChange?: (value: string) => void;
-}) {
-  return (
-    <div>
-
-      <label className="mb-2 block text-[8px] font-semibold uppercase tracking-[0.08em] text-[#899691]">
-
-        {label}
-
-        {required && (
-          <span className="ml-1 text-[#c66d61]">
-            *
-          </span>
-        )}
-
-      </label>
-
-      {select ? (
-
-        <select
-          value={value}
-          onChange={(e) => onChange?.(e.target.value)}
-          className="h-10 w-full rounded-[9px] border border-[#dfe8e4] bg-[#fbfcfc] px-3 text-[9px] text-[#596963] outline-none focus:border-[#0f766e] focus:bg-white focus:ring-2 focus:ring-[#0f766e]/10"
-        >
-
-          {options.map((option) => (
-            <option key={option}>
-              {option}
-            </option>
-          ))}
-
-        </select>
-
-      ) : (
-
-        <input
-          type={type}
-          placeholder={placeholder}
-          className="h-10 w-full rounded-[9px] border border-[#dfe8e4] bg-[#fbfcfc] px-3 text-[9px] text-[#596963] outline-none placeholder:text-[#a5afab] focus:border-[#0f766e] focus:bg-white focus:ring-2 focus:ring-[#0f766e]/10"
-        />
-
-      )}
-
-    </div>
-  );
-}
-
-/* =========================================
-   TOGGLE
-========================================= */
-
-function ToggleRow({
-  title,
-  description,
-  checked,
-  onChange,
-}: {
-  title: string;
-  description: string;
-  checked: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-[11px] border border-[#e7ecea] bg-[#fbfcfc] px-4 py-3">
-
-      <div>
-
-        <p className="text-[9px] font-semibold text-[#596963]">
-          {title}
-        </p>
-
-        <p className="mt-1 text-[7px] leading-4 text-[#9aa5a1]">
-          {description}
-        </p>
-
-      </div>
-
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`relative h-5 w-9 shrink-0 rounded-full transition ${
-          checked ? "bg-[#0f766e]" : "bg-[#cbd5d1]"
-        }`}
-      >
-
-        <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition ${
-            checked ? "left-[18px]" : "left-0.5"
-          }`}
-        />
-
-      </button>
-
-    </div>
-  );
-}
-
-/* =========================================
-   STATUS OPTION
-========================================= */
-
-function StatusOption({
-  title,
-  description,
-  selected,
-  onClick,
-  type,
-}: {
-  title: string;
-  description: string;
-  selected: boolean;
-  onClick: () => void;
-  type: "active" | "pending" | "inactive";
-}) {
-  const styles = {
-    active: {
-      dot: "bg-[#35a878]",
-      selected: "border-[#a9d9c9] bg-[#f3fbf8]",
-    },
-    pending: {
-      dot: "bg-[#d6a64d]",
-      selected: "border-[#ead8ae] bg-[#fffaf0]",
-    },
-    inactive: {
-      dot: "bg-[#9da8a4]",
-      selected: "border-[#d4dcd8] bg-[#f7f9f8]",
-    },
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-[11px] border p-4 text-left transition ${
-        selected
-          ? styles[type].selected
-          : "border-[#e5ece9] bg-white hover:border-[#d5e2de]"
-      }`}
-    >
-
-      <div className="flex items-center gap-2">
-
-        <span
-          className={`h-2 w-2 rounded-full ${styles[type].dot}`}
-        />
-
-        <span className="text-[9px] font-semibold text-[#596963]">
-          {title}
+      {/* ROLE COMMAND SELECTOR BAR */}
+      <div className="space-y-2">
+        <span className="text-xs font-black text-[#596964] uppercase tracking-wider block">
+          Select Staff Role Profile to Load Specialized Clinical / Admin Parameters:
         </span>
 
-        {selected && (
-          <span className="ml-auto text-[10px] text-[#0f766e]">
-            ✓
-          </span>
-        )}
-
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+          {[
+            { id: "Doctor" as StaffRole, title: "Provider (Doctor)", icon: Stethoscope, badge: "NPI & Prescriber", color: "from-[#0F766E] to-[#115e59]" },
+            { id: "Nurse" as StaffRole, title: "Clinical Nurse", icon: Activity, badge: "RN / LPN License", color: "from-blue-600 to-indigo-700" },
+            { id: "Scheduler" as StaffRole, title: "Front Desk Scheduler", icon: CalendarClock, badge: "Desk & Extension", color: "from-amber-600 to-orange-600" },
+            { id: "Billing" as StaffRole, title: "Billing Specialist", icon: DollarSign, badge: "Clearinghouse", color: "from-purple-600 to-indigo-800" },
+          ].map((r) => {
+            const Icon = r.icon;
+            const isSelected = selectedRole === r.id;
+            return (
+              <div
+                key={r.id}
+                onClick={() => setSelectedRole(r.id)}
+                className={`relative overflow-hidden rounded-2xl border-2 p-3.5 cursor-pointer transition-all duration-300 backdrop-blur-xl ${
+                  isSelected
+                    ? "border-[#0F766E] bg-white shadow-xl -translate-y-1 ring-4 ring-[#0F766E]/15"
+                    : "border-[#DFE8E5] bg-white/80 hover:border-[#7ee8d5] hover:bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${r.color} text-white flex items-center justify-center shadow-md`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  {isSelected && (
+                    <span className="h-5 w-5 rounded-full bg-[#0F766E] text-white flex items-center justify-center text-[10px] font-black">✓</span>
+                  )}
+                </div>
+                <h3 className="text-xs font-black text-[#172522] mt-2.5">{r.title}</h3>
+                <span className="text-[10px] font-bold text-[#63827a] block mt-0.5">{r.badge}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <p className="mt-2 text-[7px] leading-4 text-[#9aa5a1]">
-        {description}
-      </p>
+      {/* SPLIT LAYOUT: FORM (LEFT) + REAL-TIME ID CARD PREVIEW (RIGHT) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: FORM SECTIONS (8 COLS) */}
+        <form onSubmit={handleSubmit} className="lg:col-span-8 space-y-6">
+          {error && (
+            <div className="rounded-3xl border-2 border-rose-200 bg-rose-50/90 p-4 text-xs font-bold text-rose-800 flex items-center gap-3 shadow-md">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-    </button>
+          {/* CARD 1: MULTI-FACILITY & PRIMARY FACILITY RELATIONSHIPS */}
+          <div className="rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/95 p-6 shadow-[0_15px_40px_rgba(15,118,110,0.08)] backdrop-blur-3xl space-y-5">
+            <div className="border-b border-[#DFE8E5] pb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[#0F766E]">
+                <Building className="w-5 h-5 text-[#0F766E]" />
+                <h2 className="text-sm font-black text-[#172522]">1. Facility Relationships & Practice Locations</h2>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-[#0F766E] bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-xl">
+                Multi-Facility Mapping
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-xs text-[#52615D] leading-relaxed font-medium">
+                Configure primary home facility and secondary practice locations for <strong className="text-[#0F766E]">{selectedRole}</strong> scheduling, cross-clinic access, and encounter billing.
+              </p>
+
+              {/* Primary Facility Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-[#35544d] mb-1.5 flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+                  <span>Primary Home Facility (Main Practice Location) *</span>
+                </label>
+                <select
+                  value={primaryFacilityId}
+                  onChange={(e) => {
+                    const newPrimary = e.target.value;
+                    setPrimaryFacilityId(newPrimary);
+                    if (!assignedFacilityIds.includes(newPrimary)) {
+                      setAssignedFacilityIds([...assignedFacilityIds, newPrimary]);
+                    }
+                  }}
+                  className="h-11 w-full rounded-2xl border-2 border-[#DFE8E5] bg-white px-3.5 text-xs font-semibold text-[#172522] outline-none focus:border-[#0F766E] focus:ring-4 focus:ring-[#0F766E]/15 shadow-xs transition"
+                >
+                  {facilitiesList.map((fac) => (
+                    <option key={fac.id} value={fac.id}>
+                      ⭐ {fac.name} ({fac.code}) — {fac.city || "Main Campus"} [PRIMARY LOCATION]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Secondary Practice Locations Multi-Checkboxes */}
+              <div>
+                <label className="block text-xs font-bold text-[#35544d] mb-2 flex items-center gap-1.5">
+                  <Building className="w-4 h-4 text-[#0F766E]" />
+                  <span>Assigned Practice Locations & Branches (Multi-Facility Access)</span>
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {facilitiesList.map((fac) => {
+                    const isPrimary = fac.id === primaryFacilityId;
+                    const isChecked = assignedFacilityIds.includes(fac.id);
+
+                    return (
+                      <div
+                        key={fac.id}
+                        onClick={() => {
+                          if (isPrimary) return;
+                          if (isChecked) {
+                            setAssignedFacilityIds(assignedFacilityIds.filter((id) => id !== fac.id));
+                          } else {
+                            setAssignedFacilityIds([...assignedFacilityIds, fac.id]);
+                          }
+                        }}
+                        className={`relative p-3.5 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between ${
+                          isPrimary
+                            ? "border-amber-400 bg-amber-50/70 shadow-sm"
+                            : isChecked
+                            ? "border-[#0F766E] bg-teal-50/70"
+                            : "border-[#DFE8E5] bg-white hover:border-[#7ee8d5]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={isPrimary}
+                            onChange={() => {}}
+                            className="h-4 w-4 rounded-md border-slate-300 text-[#0F766E] focus:ring-[#0F766E]"
+                          />
+                          <div className="truncate">
+                            <span className="text-xs font-bold text-[#172522] block truncate">{fac.name}</span>
+                            <span className="text-[10px] text-[#63827a] font-mono block truncate">{fac.city || "Branch Location"}</span>
+                          </div>
+                        </div>
+
+                        {isPrimary ? (
+                          <span className="text-[9px] font-mono font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-lg shrink-0">
+                            PRIMARY
+                          </span>
+                        ) : isChecked ? (
+                          <span className="text-[9px] font-mono font-bold text-[#0F766E] bg-white border border-teal-200 px-2 py-0.5 rounded-lg shrink-0">
+                            SECONDARY
+                          </span>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 2: CORE DEMOGRAPHICS & AVATAR */}
+          <div className="rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/95 p-6 shadow-[0_15px_40px_rgba(15,118,110,0.08)] backdrop-blur-3xl space-y-5">
+            <div className="border-b border-[#DFE8E5] pb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[#0F766E]">
+                <User className="w-5 h-5 text-[#0F766E]" />
+                <h2 className="text-sm font-black text-[#172522]">2. Personal Identity & Photo</h2>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-[#0F766E] bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-xl">
+                Core Identity
+              </span>
+            </div>
+
+            {/* Photo Dropzone */}
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl border-2 border-dashed border-[#0F766E]/40 bg-gradient-to-r from-teal-50/70 via-emerald-50/30 to-white">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-[#0F766E] bg-white shadow-md flex items-center justify-center font-black text-xl text-[#0F766E]">
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <Camera className="w-8 h-8 text-[#0F766E]/60" />
+                )}
+              </div>
+
+              <div className="space-y-1 text-center sm:text-left">
+                <label className="block text-xs font-bold text-[#172522]">Upload Profile Photo (AWS S3)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="text-xs text-[#596964] file:mr-3 file:rounded-xl file:border-0 file:bg-[#0F766E] file:px-3.5 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-[#0c5c56] cursor-pointer"
+                />
+                <p className="text-[10px] text-[#71807c]">Saved to S3 bucket: <code className="font-mono text-[#0F766E]">healthcaresiara</code></p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <GlassInputField label="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. Sarah" required />
+              <GlassInputField label="Middle Name" value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="e.g. Jean" />
+              <GlassInputField label="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Mitchell" required />
+
+              <GlassInputField label="Email Address (Login Identity)" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sarah.mitchell@hospital.com" required />
+              <GlassInputField label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" required />
+              <GlassInputField label="Staff Employee ID" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="e.g. DOC-2026-081" />
+
+              <GlassInputField label="Date of Birth" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+              <div>
+                <label className="block text-xs font-bold text-[#596964] mb-1">Gender</label>
+                <select value={gender} onChange={(e) => setGender(e.target.value)} className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3 text-xs font-semibold text-[#172522] outline-none focus:border-[#0F766E]">
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#596964] mb-1">Department</label>
+                <select value={department} onChange={(e) => setDepartment(e.target.value)} className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3 text-xs font-semibold text-[#172522] outline-none focus:border-[#0F766E]">
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="Internal Medicine">Internal Medicine</option>
+                  <option value="Emergency">Emergency / Triage</option>
+                  <option value="Front Desk">Front Desk / Reception</option>
+                  <option value="Billing">Billing & Finance</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 3: DYNAMIC ROLE-SPECIFIC PARAMETERS */}
+          <AnimatePresence mode="wait">
+            {selectedRole === "Doctor" && (
+              <motion.div
+                key="Doctor"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="rounded-3xl border-2 border-teal-400/80 bg-gradient-to-br from-teal-50/90 via-emerald-50/30 to-white p-6 shadow-[0_15px_40px_rgba(15,118,110,0.12)] backdrop-blur-2xl space-y-5"
+              >
+                <div className="border-b border-teal-200/80 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[#0F766E]">
+                    <Stethoscope className="w-5 h-5 text-[#0F766E]" />
+                    <h2 className="text-sm font-black text-[#172522]">3. Provider Qualifications & Licensing Panel</h2>
+                  </div>
+                  <span className="bg-[#0F766E] text-white text-[10px] font-mono font-black px-3 py-1 rounded-xl">
+                    PHYSICIAN SPECIFIC
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <GlassInputField label="NPI # (10 Digits)" value={npiNumber} onChange={(e) => setNpiNumber(e.target.value)} placeholder="e.g. 1948201948" required />
+                  <GlassInputField label="Medical License #" value={medicalLicense} onChange={(e) => setMedicalLicense(e.target.value)} placeholder="e.g. LIC-92841" required />
+                  <GlassInputField label="License State" value={licenseState} onChange={(e) => setLicenseState(e.target.value)} placeholder="e.g. CA, NY" />
+
+                  <GlassInputField label="DEA Reg #" value={deaNumber} onChange={(e) => setDeaNumber(e.target.value)} placeholder="e.g. BS9281923" />
+                  <GlassInputField label="Clinical Specialty" value={specialty} onChange={(e) => setSpecialty(e.target.value)} placeholder="Cardiology" />
+                  <GlassInputField label="Taxonomy Code" value={taxonomyCode} onChange={(e) => setTaxonomyCode(e.target.value)} placeholder="207RC0000X" />
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#596964] mb-1">Degree Credentials</label>
+                    <select value={credentials} onChange={(e) => setCredentials(e.target.value)} className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3 text-xs font-semibold text-[#172522]">
+                      <option value="MD">MD (Doctor of Medicine)</option>
+                      <option value="DO">DO (Doctor of Osteopathic Medicine)</option>
+                      <option value="MBBS">MBBS</option>
+                      <option value="PhD">PhD / Research Physician</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#596964] mb-1">Prescribing Privileges</label>
+                    <select value={prescribingPrivileges} onChange={(e) => setPrescribingPrivileges(e.target.value)} className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3 text-xs font-semibold text-[#172522]">
+                      <option value="Full Controlled">Full Controlled Substances (Schedule II-V)</option>
+                      <option value="Non-Controlled">Non-Controlled Only</option>
+                      <option value="None">None</option>
+                    </select>
+                  </div>
+
+                  <GlassInputField label="Consultation Fee ($)" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)} placeholder="180" />
+
+                  <div className="sm:col-span-2">
+                    <GlassInputField label="Telehealth Room Link" value={telehealthUrl} onChange={(e) => setTelehealthUrl(e.target.value)} placeholder="https://telehealth.hospital.com/room/dr-sarah" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#596964] mb-1">Slot Duration</label>
+                    <select value={slotDuration} onChange={(e) => setSlotDuration(e.target.value)} className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3 text-xs font-semibold text-[#172522]">
+                      <option value="15 min">15 Minutes</option>
+                      <option value="30 min">30 Minutes</option>
+                      <option value="45 min">45 Minutes</option>
+                      <option value="60 min">60 Minutes</option>
+                    </select>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {selectedRole === "Nurse" && (
+              <motion.div
+                key="Nurse"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="rounded-3xl border-2 border-blue-400/80 bg-gradient-to-br from-blue-50/90 via-indigo-50/30 to-white p-6 shadow-[0_15px_40px_rgba(37,99,235,0.12)] backdrop-blur-2xl space-y-5"
+              >
+                <div className="border-b border-blue-200/80 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-blue-900">
+                    <Activity className="w-5 h-5 text-blue-600" />
+                    <h2 className="text-sm font-black text-[#172522]">3. Clinical Nursing License & Shift Panel</h2>
+                  </div>
+                  <span className="bg-blue-600 text-white text-[10px] font-mono font-black px-3 py-1 rounded-xl">
+                    NURSE SPECIFIC
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <GlassInputField label="Nursing License #" value={nursingLicense} onChange={(e) => setNursingLicense(e.target.value)} placeholder="e.g. RN-829142" required />
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#596964] mb-1">Nurse Title / Cadre</label>
+                    <select value={nurseType} onChange={(e) => setNurseType(e.target.value)} className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3 text-xs font-semibold text-[#172522]">
+                      <option value="RN">RN (Registered Nurse)</option>
+                      <option value="NP">NP (Nurse Practitioner)</option>
+                      <option value="LPN">LPN (Licensed Practical Nurse)</option>
+                    </select>
+                  </div>
+
+                  <GlassInputField label="Assigned Ward / Unit" value={assignedWard} onChange={(e) => setAssignedWard(e.target.value)} placeholder="ICU Ward 3B" />
+                  <GlassInputField label="Shift Pattern" value={shiftPattern} onChange={(e) => setShiftPattern(e.target.value)} placeholder="Day Shift (07:00 - 19:00)" />
+                  <GlassInputField label="Supervising Doctor" value={supervisingDoctor} onChange={(e) => setSupervisingDoctor(e.target.value)} placeholder="Dr. Sarah Mitchell" />
+                  <GlassInputField label="Certifications" value={triageCert} onChange={(e) => setTriageCert(e.target.value)} placeholder="BLS, ACLS, IV Cert" />
+                </div>
+              </motion.div>
+            )}
+
+            {selectedRole === "Scheduler" && (
+              <motion.div
+                key="Scheduler"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="rounded-3xl border-2 border-amber-400/80 bg-gradient-to-br from-amber-50/90 via-orange-50/30 to-white p-6 shadow-[0_15px_40px_rgba(217,119,6,0.12)] backdrop-blur-2xl space-y-5"
+              >
+                <div className="border-b border-amber-200/80 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-900">
+                    <CalendarClock className="w-5 h-5 text-amber-600" />
+                    <h2 className="text-sm font-black text-[#172522]">3. Front Desk Station & Clearance Panel</h2>
+                  </div>
+                  <span className="bg-amber-600 text-white text-[10px] font-mono font-black px-3 py-1 rounded-xl">
+                    RECEPTION SPECIFIC
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <GlassInputField label="Reception Station ID" value={receptionStation} onChange={(e) => setReceptionStation(e.target.value)} placeholder="Desk 2 - Main Lobby" />
+                  <GlassInputField label="Extension Phone" value={phoneExtension} onChange={(e) => setPhoneExtension(e.target.value)} placeholder="x402" />
+                  <GlassInputField label="Shift Hours" value={shiftHours} onChange={(e) => setShiftHours(e.target.value)} placeholder="Morning (08:00 - 16:30)" />
+                </div>
+              </motion.div>
+            )}
+
+            {selectedRole === "Billing" && (
+              <motion.div
+                key="Billing"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="rounded-3xl border-2 border-purple-400/80 bg-gradient-to-br from-purple-50/90 via-indigo-50/30 to-white p-6 shadow-[0_15px_40px_rgba(124,58,237,0.12)] backdrop-blur-2xl space-y-5"
+              >
+                <div className="border-b border-purple-200/80 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-purple-900">
+                    <DollarSign className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-sm font-black text-[#172522]">3. Billing Credentials & Clearinghouse Panel</h2>
+                  </div>
+                  <span className="bg-purple-600 text-white text-[10px] font-mono font-black px-3 py-1 rounded-xl">
+                    BILLING SPECIFIC
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <GlassInputField label="Billing Certification" value={billingCert} onChange={(e) => setBillingCert(e.target.value)} placeholder="CPC Certified" />
+                  <GlassInputField label="Clearinghouse Partner ID" value={clearinghouseId} onChange={(e) => setClearinghouseId(e.target.value)} placeholder="CH-99201" />
+                  <GlassInputField label="Approval Limit ($)" value={approvalLimit} onChange={(e) => setApprovalLimit(e.target.value)} placeholder="5000" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </form>
+
+        {/* RIGHT COLUMN: REAL-TIME VIRTUAL ID CARD PREVIEW (4 COLS) */}
+        <div className="lg:col-span-4 sticky top-6 space-y-5">
+          <div className="rounded-3xl border-2 border-[#7ee8d5]/80 bg-gradient-to-b from-[#0c2420] via-[#091b18] to-[#040e0c] p-6 text-white shadow-[0_25px_60px_rgba(12,36,32,0.4)] backdrop-blur-3xl space-y-5 overflow-hidden relative">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-[#7ee8d5]/25 blur-3xl" />
+
+            <div className="flex items-center justify-between border-b border-teal-800/80 pb-3">
+              <span className="text-[10px] font-mono font-black text-teal-300 uppercase tracking-widest flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-teal-400 animate-bounce" /> Live Virtual Staff Badge
+              </span>
+              <span className="bg-teal-500/20 text-teal-300 text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg border border-teal-400/30">
+                ACTIVE
+              </span>
+            </div>
+
+            {/* Virtual Badge Front Card */}
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 shrink-0 rounded-2xl border-2 border-teal-400 bg-teal-900/60 overflow-hidden flex items-center justify-center font-black text-lg text-teal-200 shadow-md">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "ID"
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-base font-black text-white truncate">
+                    {firstName || lastName ? `${firstName} ${lastName}` : "Staff Member Name"}
+                  </h4>
+                  <p className="text-teal-300 text-xs font-bold mt-0.5">{selectedRole} • {department}</p>
+                  <span className="text-[10px] font-mono text-teal-400/80 block mt-0.5">ID: {employeeId || "DOC-2026-081"}</span>
+                </div>
+              </div>
+
+              {/* Facility Assignment Live Preview */}
+              <div className="p-3 rounded-2xl bg-teal-900/40 border border-teal-700/60 text-xs space-y-1.5">
+                <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[11px]">
+                  <Star className="w-3.5 h-3.5 fill-amber-300" />
+                  <span className="truncate">Primary: {primaryFacilityObj?.name || "Main Facility"}</span>
+                </div>
+                {secondaryCount > 0 && (
+                  <div className="text-[10px] text-teal-200/90 font-mono pl-5">
+                    + {secondaryCount} Secondary Practice Locations
+                  </div>
+                )}
+              </div>
+
+              {/* Dynamic Badges based on role */}
+              <div className="space-y-2 pt-2 border-t border-teal-800/60 text-xs">
+                {selectedRole === "Doctor" && (
+                  <>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-teal-400/80">NPI Code:</span>
+                      <span className="font-mono font-bold text-white">{npiNumber || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-teal-400/80">Medical License:</span>
+                      <span className="font-bold text-teal-200">{medicalLicense || "—"} ({licenseState})</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-teal-400/80">Specialty:</span>
+                      <span className="font-bold text-white">{specialty}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-teal-400/80">Consult Fee:</span>
+                      <span className="font-bold text-emerald-400 font-mono">${consultationFee} / visit</span>
+                    </div>
+                  </>
+                )}
+
+                {selectedRole === "Nurse" && (
+                  <>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-teal-400/80">Nursing License:</span>
+                      <span className="font-mono font-bold text-white">{nursingLicense || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-teal-400/80">Ward Unit:</span>
+                      <span className="font-bold text-teal-200">{assignedWard}</span>
+                    </div>
+                  </>
+                )}
+
+                {selectedRole === "Scheduler" && (
+                  <>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-teal-400/80">Reception Station:</span>
+                      <span className="font-bold text-white">{receptionStation}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-teal-400/80">Extension:</span>
+                      <span className="font-mono font-bold text-amber-300">{phoneExtension}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-teal-400 to-emerald-400 text-[#0c2420] font-black text-xs shadow-lg hover:brightness-110 transition cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+              >
+                <UserCheck className="w-4 h-4 text-[#0c2420]" />
+                <span>{loading ? "Registering..." : `Save ${selectedRole} Profile`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
-/* =========================================
-   PREVIEW
-========================================= */
-
-function PreviewRow({
+function GlassInputField({
   label,
   value,
+  onChange,
+  placeholder,
+  type = "text",
+  required = false,
 }: {
   label: string;
   value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  type?: string;
+  required?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between">
-
-      <span className="text-[8px] text-[#9aa5a1]">
-        {label}
-      </span>
-
-      <span className="max-w-[170px] text-right text-[8px] font-semibold text-[#596963]">
-        {value}
-      </span>
-
-    </div>
-  );
-}
-
-/* =========================================
-   PERMISSION
-========================================= */
-
-function Permission({
-  label,
-  enabled,
-}: {
-  label: string;
-  enabled: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-[8px] bg-[#f8faf9] px-3 py-2.5">
-
-      <span className="text-[8px] text-[#687771]">
-        {label}
-      </span>
-
-      <span
-        className={`flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold ${
-          enabled
-            ? "bg-[#e2f3ed] text-[#278460]"
-            : "bg-[#f0f2f1] text-[#a3aca8]"
-        }`}
-      >
-        {enabled ? "✓" : "—"}
-      </span>
-
+    <div>
+      <label className="block text-xs font-bold text-[#596964] mb-1">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white px-3 text-xs font-semibold text-[#172522] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 shadow-xs transition"
+      />
     </div>
   );
 }

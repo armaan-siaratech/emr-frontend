@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -24,30 +25,137 @@ import {
   Eye,
   CreditCard,
   AlertCircle,
+  X,
+  User,
+  MapPin,
+  HeartPulse,
+  FileText,
+  Edit,
+  Trash2,
+  RotateCcw,
+  Save,
+  AlertTriangle,
 } from "lucide-react";
-import { getPatientsApi, PatientItem } from "@/lib/api/patientApi";
+import {
+  getPatientsApi,
+  updatePatientApi,
+  deletePatientApi,
+  restorePatientApi,
+  PatientItem,
+  PatientUpdateParams,
+} from "@/lib/api/patientApi";
 
 export default function AdminPatientsPage() {
+  const router = useRouter();
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
 
   // View Mode: 'grid' (3D Colorized Cards) or 'table' (Elevated Glass Table)
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  // Filters
+  // Filters & Debouncing
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("All Status");
   const [gender, setGender] = useState("All Gender");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Modals & Action States
+  const [showViewModal, setShowViewModal] = useState<boolean>(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [selectedPatient, setSelectedPatient] = useState<PatientItem | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Edit Form State
+  const [editFormData, setEditFormData] = useState<PatientUpdateParams>({
+    first_name: "",
+    middle_name: "",
+    last_name: "",
+    gender: "Female",
+    date_of_birth: "",
+    phone: "",
+    email: "",
+    address_line1: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
+    insurance_provider: "",
+    insurance_policy_number: "",
+    status: "Active",
+  });
+
+  const openViewModal = (patient: PatientItem) => {
+    setSelectedPatient(patient);
+    setShowViewModal(true);
+  };
+
+  const openEditModal = (patient: PatientItem) => {
+    router.push(`/admin/patients/${patient.id}/edit`);
+  };
+
+  const openDeleteModal = (patient: PatientItem) => {
+    setSelectedPatient(patient);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm Soft Delete / Suspend
+  const handleConfirmDelete = async () => {
+    if (!selectedPatient) return;
+    setIsSubmitting(true);
+    try {
+      await deletePatientApi(selectedPatient.id);
+      showToast(`Patient profile for '${selectedPatient.first_name} ${selectedPatient.last_name}' has been soft-deleted.`);
+      setShowDeleteModal(false);
+      setSelectedPatient(null);
+      await fetchPatients();
+    } catch (err: any) {
+      showToast(err?.message || "Failed to soft-delete patient profile.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Restore Patient Profile
+  const handleRestore = async (patient: PatientItem) => {
+    setIsSubmitting(true);
+    try {
+      await restorePatientApi(patient.id);
+      showToast(`Patient profile '${patient.first_name} ${patient.last_name}' restored to Active status!`);
+      if (showViewModal) setShowViewModal(false);
+      await fetchPatients();
+    } catch (err: any) {
+      showToast(err?.message || "Failed to restore patient profile.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Smooth Search Debouncing (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const isInitialFetch = useRef(true);
+
   const fetchPatients = useCallback(async () => {
-    setLoading(true);
+    if (isInitialFetch.current) {
+      setLoading(true);
+    } else {
+      setIsFetching(true);
+    }
+
     try {
       const data = await getPatientsApi({
-        search: search.trim() || undefined,
+        search: debouncedSearch.trim() || undefined,
         status: status !== "All Status" ? status : undefined,
         gender: gender !== "All Gender" ? gender : undefined,
         page,
@@ -61,8 +169,10 @@ export default function AdminPatientsPage() {
       console.error("Error fetching patients:", err);
     } finally {
       setLoading(false);
+      setIsFetching(false);
+      isInitialFetch.current = false;
     }
-  }, [search, status, gender, page]);
+  }, [debouncedSearch, status, gender, page]);
 
   useEffect(() => {
     fetchPatients();
@@ -188,8 +298,11 @@ export default function AdminPatientsPage() {
                   setPage(1);
                 }}
                 placeholder="Search patient name, MRN, phone, or email..."
-                className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-3 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 shadow-xs"
+                className="h-10 w-full rounded-2xl border border-[#DFE8E5] bg-white pl-10 pr-9 text-xs text-[#263833] placeholder-[#A3AEAA] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 shadow-xs"
               />
+              {isFetching && (
+                <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[#0F766E]" />
+              )}
             </div>
 
             {/* Gender Filter */}
@@ -220,6 +333,7 @@ export default function AdminPatientsPage() {
               <option value="Active">Active</option>
               <option value="Pending">Pending</option>
               <option value="Inactive">Inactive</option>
+              <option value="Soft-Deleted">Soft-Deleted</option>
             </select>
 
             {(search || status !== "All Status" || gender !== "All Gender") && (
@@ -284,49 +398,69 @@ export default function AdminPatientsPage() {
             <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#0F766E] mb-3" />
             <p className="font-bold text-[#172522]">Loading live patient profiles from server...</p>
           </div>
-        ) : patients.length === 0 ? (
-          <div className="rounded-3xl border-2 border-[#7ee8d5]/40 bg-white/90 p-16 text-center shadow-lg backdrop-blur-xl">
-            <Users className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
-            <h3 className="font-black text-lg text-[#172522]">No Patients Registered</h3>
-            <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
-              Click &quot;Register Patient&quot; to add a new patient profile under a facility.
-            </p>
-          </div>
-        ) : viewMode === "grid" ? (
-          /* ============================================================
-             3D COLORIZED GLASS CARDS GRID VIEW
-          ============================================================ */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-            {patients.map((item) => (
-              <PatientGlassCard key={item.id} patient={item} />
-            ))}
-          </div>
         ) : (
-          /* ============================================================
-             ELEVATED GLASS TABLE VIEW
-          ============================================================ */
-          <div className="overflow-hidden rounded-3xl border-2 border-[#7ee8d5]/60 bg-white/95 shadow-[0_15px_40px_rgba(15,118,110,0.08)] backdrop-blur-2xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#DFE8E5] bg-gradient-to-r from-teal-50/80 to-emerald-50/80 text-[11px] font-black text-[#0F766E] uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Patient Profile</th>
-                    <th className="py-3.5 px-4">Unique MRN</th>
-                    <th className="py-3.5 px-4">Gender / DOB</th>
-                    <th className="py-3.5 px-4">Insurance</th>
-                    <th className="py-3.5 px-4">Emergency Contact</th>
-                    <th className="py-3.5 px-4">Registered</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#edf2f0] text-xs">
-                  {patients.map((p) => (
-                    <PatientTableRow key={p.id} patient={p} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className={`transition-opacity duration-200 ${isFetching ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
+            {patients.length === 0 ? (
+              <div className="rounded-3xl border-2 border-[#7ee8d5]/40 bg-white/90 p-16 text-center shadow-lg backdrop-blur-xl">
+                <Users className="w-10 h-10 mx-auto text-[#0F766E] mb-3 opacity-60" />
+                <h3 className="font-black text-lg text-[#172522]">No Patients Found</h3>
+                <p className="text-xs text-[#63827a] mt-1 max-w-sm mx-auto">
+                  {search || status !== "All Status" || gender !== "All Gender"
+                    ? `No patient profiles match your filter criteria. Try resetting search.`
+                    : 'Click "Register Patient" to add a new patient profile under a facility.'}
+                </p>
+              </div>
+            ) : viewMode === "grid" ? (
+              /* ============================================================
+                 3D COLORIZED GLASS CARDS GRID VIEW
+              ============================================================ */
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {patients.map((item) => (
+                  <PatientGlassCard
+                    key={item.id}
+                    patient={item}
+                    onView={openViewModal}
+                    onEdit={openEditModal}
+                    onDelete={openDeleteModal}
+                    onRestore={handleRestore}
+                  />
+                ))}
+              </div>
+            ) : (
+              /* ============================================================
+                 ELEVATED GLASS TABLE VIEW
+              ============================================================ */
+              <div className="overflow-hidden rounded-3xl border-2 border-[#7ee8d5]/60 bg-white/95 shadow-[0_15px_40px_rgba(15,118,110,0.08)] backdrop-blur-2xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#DFE8E5] bg-gradient-to-r from-teal-50/80 to-emerald-50/80 text-[11px] font-black text-[#0F766E] uppercase tracking-wider">
+                        <th className="py-3.5 px-4">Patient Profile</th>
+                        <th className="py-3.5 px-4">Unique MRN</th>
+                        <th className="py-3.5 px-4">Gender / DOB</th>
+                        <th className="py-3.5 px-4">Insurance</th>
+                        <th className="py-3.5 px-4">Emergency Contact</th>
+                        <th className="py-3.5 px-4">Registered</th>
+                        <th className="py-3.5 px-4">Status</th>
+                        <th className="py-3.5 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#edf2f0] text-xs">
+                      {patients.map((p) => (
+                        <PatientTableRow
+                          key={p.id}
+                          patient={p}
+                          onView={openViewModal}
+                          onEdit={openEditModal}
+                          onDelete={openDeleteModal}
+                          onRestore={handleRestore}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -357,11 +491,274 @@ export default function AdminPatientsPage() {
           </div>
         )}
       </div>
+
+      {/* 3D Colorized Patient View Glass Modal (Matching Tenant View Modal) */}
+      <AnimatePresence>
+        {showViewModal && selectedPatient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            {/* Backdrop overlay (Does NOT close on outside click) */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-[#0c2420]/45 backdrop-blur-md transition-opacity"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="relative w-full max-w-2xl rounded-3xl border-2 border-[#7ee8d5]/70 bg-white/90 p-5 sm:p-7 shadow-[0_25px_70px_rgba(15,118,110,0.3)] backdrop-blur-3xl overflow-hidden my-auto space-y-5"
+            >
+              {/* Ambient cyan corner highlights */}
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#7ee8d5]/25 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-[#0284c7]/20 blur-3xl" />
+
+              {/* Modal Header */}
+              <div className="relative flex items-center justify-between border-b border-teal-200/60 pb-4 mb-2">
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#132a26] text-center w-full uppercase flex items-center justify-center gap-2">
+                  <User className="h-6 w-6 text-[#0f766e]" />
+                  Patient Record: <span className="text-[#0f766e]">{selectedPatient.first_name} {selectedPatient.last_name}</span>
+                </h2>
+
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="absolute right-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/60 text-[#35544d] shadow-sm transition-all hover:bg-white hover:scale-110 active:scale-95 cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs relative z-10">
+                {/* Avatar & Key Banner */}
+                <div className="rounded-2xl border border-white/80 bg-white/60 p-4 shadow-sm backdrop-blur-md flex items-center gap-4">
+                  <div className="h-16 w-16 shrink-0 rounded-2xl border-2 border-[#0F766E] bg-teal-50 overflow-hidden flex items-center justify-center font-black text-lg text-[#0F766E]">
+                    {selectedPatient.image_url ? (
+                      <img
+                        src={selectedPatient.image_url}
+                        alt={`${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      `${selectedPatient.first_name?.[0] || ""}${selectedPatient.last_name?.[0] || ""}`.toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-base font-black text-[#132a26]">
+                        {selectedPatient.first_name} {selectedPatient.middle_name ? selectedPatient.middle_name + " " : ""}{selectedPatient.last_name}
+                      </h3>
+                      <StatusPill status={selectedPatient.status} />
+                    </div>
+                    <p className="text-[#0F766E] text-xs font-mono font-bold mt-0.5">
+                      MRN Code: {selectedPatient.mrn}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Patient Demographics */}
+                <div className="rounded-2xl border border-white/80 bg-white/60 p-4 shadow-sm backdrop-blur-md">
+                  <span className="text-[#35544d] font-bold block text-xs uppercase tracking-wider mb-2">Demographics & Profile Overview</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Gender</span>
+                      <p className="text-[#132a26] font-bold text-xs mt-0.5">{selectedPatient.gender}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Date of Birth</span>
+                      <p className="text-[#132a26] font-mono font-bold text-xs mt-0.5">{selectedPatient.date_of_birth}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Record Status</span>
+                      <p className="text-[#132a26] font-bold text-xs mt-0.5">{selectedPatient.status}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact & Address */}
+                <div className="rounded-2xl border border-white/80 bg-white/60 p-4 shadow-sm backdrop-blur-md">
+                  <span className="text-[#35544d] font-bold block text-xs uppercase tracking-wider mb-2 font-sans">Contact & Residential Address</span>
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Phone Number</span>
+                      <p className="text-[#132a26] font-mono text-xs mt-0.5">{selectedPatient.phone || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Email Address</span>
+                      <p className="text-[#132a26] font-mono text-xs mt-0.5">{selectedPatient.email || "N/A"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Address</span>
+                      <p className="text-[#132a26] font-medium text-xs mt-0.5">
+                        {selectedPatient.address || "N/A"}{selectedPatient.city ? `, ${selectedPatient.city}` : ""}{selectedPatient.state ? `, ${selectedPatient.state}` : ""}{selectedPatient.zip_code ? ` ${selectedPatient.zip_code}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insurance & Emergency Contact */}
+                <div className="rounded-2xl border border-white/80 bg-white/60 p-4 shadow-sm backdrop-blur-md">
+                  <span className="text-[#35544d] font-bold block text-xs uppercase tracking-wider mb-2">Insurance & Emergency Contact</span>
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Insurance Provider</span>
+                      <p className="text-[#132a26] font-bold text-xs mt-0.5">{selectedPatient.insurance_provider || "Self Pay"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Policy Number</span>
+                      <p className="text-[#132a26] font-mono text-xs mt-0.5">{selectedPatient.insurance_policy_number || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Emergency Contact</span>
+                      <p className="text-[#132a26] font-medium text-xs mt-0.5">{selectedPatient.emergency_contact_name || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#63827a] font-bold block text-[10px] uppercase">Emergency Phone</span>
+                      <p className="text-[#132a26] font-mono text-xs mt-0.5">{selectedPatient.emergency_contact_phone || "N/A"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2 relative z-10">
+                <Link
+                  href={`/admin/patients/${selectedPatient.id}`}
+                  className="px-5 py-3 rounded-2xl bg-[#0F766E] hover:bg-[#0c5c56] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Full EMR Chart</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowViewModal(false);
+                    router.push(`/admin/patients/${selectedPatient.id}/edit`);
+                  }}
+                  className="px-5 py-3 rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Edit className="w-4 h-4 text-amber-700" />
+                  <span>Edit Profile</span>
+                </button>
+
+                {selectedPatient.is_deleted || selectedPatient.status === "Inactive" ? (
+                  <button
+                    type="button"
+                    onClick={() => handleRestore(selectedPatient)}
+                    className="px-5 py-3 rounded-2xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <RotateCcw className="w-4 h-4 text-emerald-700" />
+                    <span>Restore Record</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowViewModal(false);
+                      openDeleteModal(selectedPatient);
+                    }}
+                    className="px-5 py-3 rounded-2xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-700" />
+                    <span>Soft Delete</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowViewModal(false)}
+                  className="px-5 py-3 rounded-2xl border border-white/80 bg-white/60 hover:bg-white text-[#35544d] font-bold text-xs shadow-sm transition-all cursor-pointer"
+                >
+                  Close Window
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+
+
+      {/* 3. Soft-Delete / Suspend Patient Glass Modal */}
+      <AnimatePresence>
+        {showDeleteModal && selectedPatient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-[#0c2420]/45 backdrop-blur-md transition-opacity"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="relative max-w-md w-full rounded-3xl border-2 border-rose-300 bg-white/95 p-6 sm:p-8 shadow-[0_25px_70px_rgba(225,29,72,0.25)] backdrop-blur-3xl text-center space-y-4 overflow-hidden my-auto"
+            >
+              <div className="w-14 h-14 rounded-full bg-rose-100 border border-rose-200 flex items-center justify-center mx-auto text-rose-600">
+                <Trash2 className="w-7 h-7" />
+              </div>
+
+              <h3 className="text-lg font-black text-[#132a26]">Soft-Delete Patient Profile</h3>
+
+              <p className="text-xs text-[#52615D] leading-relaxed">
+                Are you sure you want to soft-delete patient record for{" "}
+                <span className="font-bold text-[#0F766E]">
+                  {selectedPatient.first_name} {selectedPatient.last_name}
+                </span>{" "}
+                (MRN: <span className="font-mono font-bold">{selectedPatient.mrn}</span>)?
+              </p>
+
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-medium text-left">
+                <p className="font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-4 h-4 text-rose-600" />
+                  HIPAA Record Retention Policy:
+                </p>
+                <p className="mt-0.5 text-[#596964]">
+                  This profile will be marked as soft-deleted. Clinical history is preserved for compliance auditing and can be restored at any time by an Admin.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={isSubmitting}
+                  className="w-44 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-900/30 disabled:opacity-50 transition cursor-pointer"
+                >
+                  {isSubmitting ? "Processing..." : "Confirm Soft-Delete"}
+                </button>
+
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="w-44 py-3 rounded-2xl border border-slate-200 bg-slate-100 text-[#35544d] font-bold text-xs hover:bg-white transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function PatientGlassCard({ patient }: { patient: PatientItem }) {
+function PatientGlassCard({
+  patient,
+  onView,
+  onEdit,
+  onDelete,
+  onRestore,
+}: {
+  patient: PatientItem;
+  onView: (patient: PatientItem) => void;
+  onEdit: (patient: PatientItem) => void;
+  onDelete: (patient: PatientItem) => void;
+  onRestore: (patient: PatientItem) => void;
+}) {
   const fullName = `${patient.first_name} ${patient.middle_name ? patient.middle_name + " " : ""}${patient.last_name}`;
   const initials = `${patient.first_name?.[0] || ""}${patient.last_name?.[0] || ""}`.toUpperCase();
 
@@ -370,7 +767,8 @@ function PatientGlassCard({ patient }: { patient: PatientItem }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="relative group rounded-3xl border-2 border-[#7ee8d5]/70 bg-gradient-to-br from-teal-50/90 via-emerald-50/40 to-white p-4 shadow-[0_10px_25px_rgba(15,118,110,0.1)] hover:shadow-[0_15px_35px_rgba(15,118,110,0.2)] hover:-translate-y-1 transition-all duration-300 backdrop-blur-xl flex flex-col justify-between overflow-hidden"
+      className="relative group rounded-3xl border-2 border-[#7ee8d5]/70 bg-gradient-to-br from-teal-50/90 via-emerald-50/40 to-white p-4 shadow-[0_10px_25px_rgba(15,118,110,0.1)] hover:shadow-[0_15px_35px_rgba(15,118,110,0.2)] hover:-translate-y-1 transition-all duration-300 backdrop-blur-xl flex flex-col justify-between overflow-hidden cursor-pointer"
+      onClick={() => onView(patient)}
     >
       <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#7ee8d5]/30 blur-xl group-hover:bg-[#0f766e]/20 transition-all duration-300" />
 
@@ -395,12 +793,16 @@ function PatientGlassCard({ patient }: { patient: PatientItem }) {
 
         {/* Patient Name */}
         <div>
-          <Link
-            href={`/admin/patients/${patient.id}`}
-            className="text-sm font-black text-[#132a26] hover:text-[#0F766E] transition line-clamp-1 block"
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView(patient);
+            }}
+            className="text-sm font-black text-[#132a26] hover:text-[#0F766E] transition line-clamp-1 block text-left cursor-pointer"
           >
             {fullName}
-          </Link>
+          </button>
           <div className="flex items-center gap-1 text-[11px] text-[#63827a] mt-0.5 font-medium">
             <span>{patient.gender}</span>
             <span>•</span>
@@ -427,28 +829,84 @@ function PatientGlassCard({ patient }: { patient: PatientItem }) {
         </div>
       </div>
 
-      {/* Footer Bar: Status + View Action */}
+      {/* Footer Bar: Status + Actions */}
       <div className="pt-3 mt-3 border-t border-teal-200/60 flex items-center justify-between gap-2 relative z-10">
-        <StatusPill status={patient.status} />
+        <StatusPill status={patient.is_deleted ? "Soft-Deleted" : patient.status} />
 
-        <Link
-          href={`/admin/patients/${patient.id}`}
-          className="flex items-center gap-1 text-xs font-black text-[#0F766E] hover:underline"
-        >
-          <span>View Profile</span>
-          <ChevronRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView(patient);
+            }}
+            className="p-1.5 rounded-lg bg-teal-50 hover:bg-[#0F766E] text-[#0F766E] hover:text-white transition cursor-pointer"
+            title="View Details"
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(patient);
+            }}
+            className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white transition cursor-pointer"
+            title="Edit Profile"
+          >
+            <Edit className="w-3.5 h-3.5" />
+          </button>
+
+          {patient.is_deleted || patient.status === "Inactive" ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRestore(patient);
+              }}
+              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white transition cursor-pointer"
+              title="Restore Patient"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(patient);
+              }}
+              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white transition cursor-pointer"
+              title="Soft Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
     </motion.div>
   );
 }
 
-function PatientTableRow({ patient }: { patient: PatientItem }) {
+function PatientTableRow({
+  patient,
+  onView,
+  onEdit,
+  onDelete,
+  onRestore,
+}: {
+  patient: PatientItem;
+  onView: (patient: PatientItem) => void;
+  onEdit: (patient: PatientItem) => void;
+  onDelete: (patient: PatientItem) => void;
+  onRestore: (patient: PatientItem) => void;
+}) {
   const fullName = `${patient.first_name} ${patient.middle_name ? patient.middle_name + " " : ""}${patient.last_name}`;
   const initials = `${patient.first_name?.[0] || ""}${patient.last_name?.[0] || ""}`.toUpperCase();
 
   return (
-    <tr className="hover:bg-teal-50/40 transition">
+    <tr className="hover:bg-teal-50/40 transition cursor-pointer" onClick={() => onView(patient)}>
       <td className="py-3 px-4">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-[#0F766E]/40 bg-teal-50 flex items-center justify-center font-bold text-xs text-[#0F766E]">
@@ -459,12 +917,16 @@ function PatientTableRow({ patient }: { patient: PatientItem }) {
             )}
           </div>
           <div>
-            <Link
-              href={`/admin/patients/${patient.id}`}
-              className="font-bold text-[#172522] hover:text-[#0F766E] transition block"
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onView(patient);
+              }}
+              className="font-bold text-[#172522] hover:text-[#0F766E] transition block text-left cursor-pointer"
             >
               {fullName}
-            </Link>
+            </button>
             <span className="text-[10px] text-[#71807c] block">{patient.phone}</span>
           </div>
         </div>
@@ -498,16 +960,61 @@ function PatientTableRow({ patient }: { patient: PatientItem }) {
       </td>
 
       <td className="py-3 px-4">
-        <StatusPill status={patient.status} />
+        <StatusPill status={patient.is_deleted ? "Soft-Deleted" : patient.status} />
       </td>
 
       <td className="py-3 px-4 text-right">
-        <Link
-          href={`/admin/patients/${patient.id}`}
-          className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-white border border-[#DFE8E5] text-[#0F766E] hover:bg-[#0F766E] hover:text-white transition shadow-xs"
-        >
-          <Eye className="w-4 h-4" />
-        </Link>
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView(patient);
+            }}
+            className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-white border border-[#DFE8E5] text-[#0F766E] hover:bg-[#0F766E] hover:text-white transition shadow-xs cursor-pointer"
+            title="View Details"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(patient);
+            }}
+            className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-white border border-[#DFE8E5] text-amber-700 hover:bg-amber-600 hover:text-white transition shadow-xs cursor-pointer"
+            title="Edit Profile"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+
+          {patient.is_deleted || patient.status === "Inactive" ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRestore(patient);
+              }}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-white border border-[#DFE8E5] text-emerald-700 hover:bg-emerald-600 hover:text-white transition shadow-xs cursor-pointer"
+              title="Restore Record"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(patient);
+              }}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-white border border-[#DFE8E5] text-rose-700 hover:bg-rose-600 hover:text-white transition shadow-xs cursor-pointer"
+              title="Soft Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   );
